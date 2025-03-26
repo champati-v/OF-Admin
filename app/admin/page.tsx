@@ -8,7 +8,7 @@ export default function Home() {
         <h1 className="text-4xl font-bold">OnlyFounders Admin</h1>
         <p className="text-muted-foreground">Manage your platform with ease</p>
         <Button asChild>
-          <Link href="/dashboard/users">Go to Dashboard</Link>
+          <Link href="/admin/dashboard/">Go to Dashboard</Link>
         </Button>
       </div>
     </div>
