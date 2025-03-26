@@ -8,7 +8,7 @@ export default function DashboardPage() {
         <h1 className="text-4xl font-bold">Welcome to OnlyFounders Admin</h1>
         <p className="text-muted-foreground">Select a section from the navigation to get started</p>
         <Button asChild>
-          <Link href="/dashboard/users">Manage Users</Link>
+          <Link href="/admin/dashboard/early-access">Manage Users</Link>
         </Button>
       </div>
     </div>
