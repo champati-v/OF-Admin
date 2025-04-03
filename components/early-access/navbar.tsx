@@ -59,12 +59,12 @@ export function Navbar() {
             </Link> */}
           </nav>
         </div>
-        <div className="flex items-center gap-4">
+        {/* <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" className="text-primary">
             <LogOut className="h-5 w-5" />
             <span className="sr-only">Log out</span>
           </Button>
-        </div>
+        </div> */}
       </div>
     </header>
   )
