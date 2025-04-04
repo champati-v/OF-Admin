@@ -15,6 +15,9 @@ export default function DashboardPage() {
           <Link href="/admin/dashboard/early-access">Manage Early Access</Link>
         </Button>
         <Button asChild>
+          <Link href="/admin/dashboard/marketplace">Manage Marketplace</Link>
+        </Button>
+        <Button asChild>
           <Link href="/admin">Manage Campaigns</Link>
         </Button>
         </div>

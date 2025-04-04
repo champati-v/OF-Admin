@@ -4,8 +4,6 @@ import { FoundersManagement } from "@/components/users/founders-management"
 import { InvestorsManagement } from "@/components/users/investors-management"
 import { ServiceProvidersManagement } from "@/components/users/service-providers-management"
 import { UserFilters } from "@/components/users/user-filters"
-import { RefreshCcw } from "lucide-react"
-import { Button } from "@/components/ui/button"
 
 export default function UsersPage() {
   return (
