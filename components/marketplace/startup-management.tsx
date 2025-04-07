@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { MoreHorizontal, Eye, Ban, CheckCircle, BadgeCheck, Star, TrendingUp } from "lucide-react"
+import { MoreHorizontal, Eye, Ban, CheckCircle, BadgeCheck, Star, TrendingUp, ChevronDown } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 // Define the Startup type
@@ -27,7 +27,7 @@ type Startup = {
   createdAt: string
   totalRaised: string
   stage: "Ideation" | "Prototype" | "MVP" | "Public Beta"
-  verifiedStatus: "verified" | "not verified" | "blocked"
+  verifiedStatus: "Verified" | "Unverified" | "blocked"
   hasCampaign: boolean
   isFeatured: boolean
   featuredStatus: string
@@ -189,10 +189,74 @@ export function StartupManagement() {
     setShowDetails(true)
   }
 
-  const handleVerifyUnverify = (startup: Startup) => {
-    // In a real implementation, this would call an API to update the startup's verification status
-    console.log(`${startup.verificationStatus === "verified" ? "Unverifying" : "Verifying"} ${startup.startupName}`)
+  const handleVerifyUnverify = async (startup: Startup) => {
+    try {
+      setStatusLoading(true)
+      // Check for "Verified" with capital V
+      const newStatus = startup.verifiedStatus === "Verified" ? "Unverified" : "Verified"
+
+      const response = await fetch(
+        `https://onlyfounders.azurewebsites.net/api/admin/change-verification-status/${startup._id}/${newStatus}`,
+        {
+          method: "PATCH", // Keep the original method
+          headers: {
+            user_id: "62684",
+          },
+        },
+      )
+
+      if (!response.ok) {
+        throw new Error(`Failed to ${newStatus.toLowerCase()} startup`)
+      }
+
+      const data = await response.json()
+      console.log(`${newStatus} startup:`, data.message)
+
+      // This will trigger a refetch of the startups list
+      setStatusLoading(false)
+    } catch (err) {
+      const errorMessage = (err as Error).message
+      console.error(
+        `Error ${startup.verifiedStatus === "Verified" ? "unverifying" : "verifying"} startup:`,
+        errorMessage,
+      )
+      setError(errorMessage)
+      setStatusLoading(false)
+    }
   }
+
+
+  const handleToggleStatus = async (startup: Startup, newStatus: "Featured" | "Trending") => {
+    try {
+      setStatusLoading(true)
+
+      const response = await fetch(
+        `https://onlyfounders.azurewebsites.net/api/admin/change-status/${startup._id}/${newStatus}`,
+        {
+          method: "PATCH",
+          headers: {
+            user_id: "62684",
+          },
+        },
+      )
+
+      if (!response.ok) {
+        throw new Error(`Failed to mark startup as ${newStatus}`)
+      }
+
+      const data = await response.json()
+      console.log(`Status updated to ${newStatus}:`, data.message)
+
+      // This will trigger a refetch of the startups list
+      setStatusLoading(false)
+    } catch (err) {
+      const errorMessage = (err as Error).message
+      console.error(`Error updating startup status:`, errorMessage)
+      setError(errorMessage)
+      setStatusLoading(false)
+    }
+  }
+
 
   const handleBlockUnblock = (startup: Startup) => {
     // In a real implementation, this would call an API to update the startup's status
@@ -265,9 +329,19 @@ export function StartupManagement() {
                 <TableCell>{startup.totalRaised}</TableCell>
                 <TableCell>{startup.stage}</TableCell>
                 <TableCell>
-                  <Badge variant={getVerificationBadgeVariant(startup.verifiedStatus)} className="capitalize">
-                    {startup.verifiedStatus.replace("-", " ")}
-                  </Badge>
+                <div className="flex flex-row gap-1 items-center">
+                    <Badge variant={getVerificationBadgeVariant(startup.verifiedStatus)} className="capitalize">
+                      {startup.verifiedStatus.replace("-", " ")}
+                    </Badge>
+                    {startup.featuredStatus && (
+                      <Badge
+                        variant="outline"
+                        className={startup.featuredStatus === "Featured" ? "bg-primary/10" : "bg-blue-500/10"}
+                      >
+                        {startup.featuredStatus}
+                      </Badge>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>
@@ -296,30 +370,77 @@ export function StartupManagement() {
                       {startup.verificationStatus !== "blocked" && (
                         <DropdownMenuItem
                           onClick={() => handleVerifyUnverify(startup)}
-                          className={startup.verificationStatus === "verified" ? "text-red-500" : "text-green-500"}
+                          className={startup.verifiedStatus === "Verified" ? "text-red-500" : "text-green-500"}
+                          
                         >
                           <BadgeCheck className="mr-2 h-4 w-4" />
-                          {startup.verificationStatus === "verified" ? "Unverify" : "Verify"}
+                          {startup.verifiedStatus === "Verified" ? "Unverify" : "Verify"}
                         </DropdownMenuItem>
                       )}
 
+                       {/* Status dropdown */}
+                       <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-start font-normal text-sm px-2 py-1.5 h-auto"
+                          >
+                            <div className="flex items-center">
+                              {startup.featuredStatus === "Featured" ? (
+                                <Star className="mr-2 h-4 w-4 text-primary" />
+                              ) : (
+                                <TrendingUp className="mr-2 h-4 w-4 text-primary" />
+                              )}
+                              <span>
+                                {startup.featuredStatus
+                                  ? `Status: ${startup.featuredStatus}`
+                                  : "Status: Trending (Default)"}
+                              </span>
+                              <ChevronDown className="ml-auto h-4 w-4" />
+                            </div>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-48">
+                          <DropdownMenuItem
+                            onClick={() => handleToggleStatus(startup, "Featured")}
+                            disabled={startup.featuredStatus === "Featured"}
+                            className={
+                              startup.featuredStatus === "Featured" ? "text-muted-foreground" : "text-green-500"
+                            }
+                          >
+                            <Star className="mr-2 h-4 w-4" />
+                            Mark as Featured
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleToggleStatus(startup, "Trending")}
+                            disabled={startup.featuredStatus === "Trending"}
+                            className={
+                              startup.featuredStatus === "Trending" ? "text-muted-foreground" : "text-green-500"
+                            }
+                          >
+                            <TrendingUp className="mr-2 h-4 w-4" />
+                            Mark as Trending
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
                       {/* Featured option */}
-                      <DropdownMenuItem
+                      {/* <DropdownMenuItem
                         onClick={() => handleToggleFeatured(startup)}
                         className={startup.isFeatured ? "text-red-500" : "text-green-500"}
                       >
                         <Star className="mr-2 h-4 w-4" />
                         {startup.isFeatured ? "Remove from Featured" : "Add to Featured"}
-                      </DropdownMenuItem>
+                      </DropdownMenuItem> */}
 
                       {/* Trending option */}
-                      <DropdownMenuItem
+                      {/* <DropdownMenuItem
                         onClick={() => handleToggleTrending(startup)}
                         className={startup.isTrending ? "text-red-500" : "text-green-500"}
                       >
                         <TrendingUp className="mr-2 h-4 w-4" />
                         {startup.isTrending ? "Remove from Trending" : "Add to Trending"}
-                      </DropdownMenuItem>
+                      </DropdownMenuItem> */}
 
                       {/* Block/Unblock option */}
                       <DropdownMenuItem
@@ -367,12 +488,12 @@ export function StartupManagement() {
               <div className="grid grid-cols-4 items-center gap-4">
                 <div className="font-medium">Founder:</div>
                 <div className="col-span-3">
-                  <Link
+                  {/* <Link
                     href={`/dashboard/users?founder=${selectedStartup.founder.id}`}
                     className="text-primary hover:underline"
                   >
                     {selectedStartup.founder.name}
-                  </Link>
+                  </Link> */}
                 </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
@@ -419,12 +540,12 @@ export function StartupManagement() {
               <div className="grid grid-cols-4 items-center gap-4">
                 <div className="font-medium">Verification:</div>
                 <div className="col-span-3">
-                  <Badge
+                  {/* <Badge
                     variant={getVerificationBadgeVariant(selectedStartup.verificationStatus)}
                     className="capitalize"
                   >
                     {selectedStartup.verificationStatus.replace("-", " ")}
-                  </Badge>
+                  </Badge> */}
                 </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
