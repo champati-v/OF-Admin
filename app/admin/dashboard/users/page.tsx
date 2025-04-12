@@ -3,6 +3,7 @@ import { UsersOverview } from "@/components/users/user-overview"
 import { FoundersManagement } from "@/components/users/founders-management"
 import { InvestorsManagement } from "@/components/users/investors-management"
 import { ServiceProvidersManagement } from "@/components/users/service-providers-management"
+import {AllUsersManagement} from "@/components/users/all-user-management"
 import { UserFilters } from "@/components/users/user-filters"
 
 export default function UsersPage() {
@@ -27,6 +28,9 @@ export default function UsersPage() {
             <TabsTrigger value="service-providers" className="data-[state=active]:bg-background">
               Service Providers
             </TabsTrigger>
+            <TabsTrigger value="all-users" className="data-[state=active]:bg-background">
+              All Users
+            </TabsTrigger>
           </TabsList>
           <UserFilters />
         </div>
@@ -43,6 +47,11 @@ export default function UsersPage() {
         <TabsContent value="service-providers" className="mt-0">
           <ServiceProvidersManagement />
         </TabsContent>
+
+        <TabsContent value="all-users" className="mt-0">
+          <AllUsersManagement />
+        </TabsContent>
+
       </Tabs>
     </div>
   )
