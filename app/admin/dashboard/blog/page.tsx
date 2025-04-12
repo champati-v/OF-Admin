@@ -1,18 +1,16 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useState } from "react"
-import { useEditor, EditorContent } from "@tiptap/react"
-import StarterKit from "@tiptap/starter-kit"
-import Underline from "@tiptap/extension-underline"
-import TextStyle from "@tiptap/extension-text-style"
-import Color from "@tiptap/extension-color"
-import Image from "@tiptap/extension-image"
-import Youtube from "@tiptap/extension-youtube"
-import Placeholder from "@tiptap/extension-placeholder"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -20,521 +18,405 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Bold, Italic, UnderlineIcon, List, ListOrdered, ImageIcon, YoutubeIcon, Palette } from "lucide-react"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Separator } from "@/components/ui/separator"
-import { Label } from "@/components/ui/label"
-import FontSize from "@tiptap/extension-font-size"
-import Link from "@tiptap/extension-link"
-import { EmojiPicker } from "./emoji-picker"
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { MoreVertical, Pencil, Plus, Trash } from "lucide-react";
 
-export default function BlogEditor() {
-  const [title, setTitle] = useState("")
-  const [showPreview, setShowPreview] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [description, setDescription] = useState("")
-  const [categories, setCategories] = useState("")
-  const [linkDialogOpen, setLinkDialogOpen] = useState(false)
-  const [linkUrl, setLinkUrl] = useState("")
-  const [linkText, setLinkText] = useState("")
+interface Blog {
+  _id: string;
+  title: string;
+  description: string;
+  content: string;
+  categories: string[];
+  headerImage?: string;
+  file_url?: string;
+  createdAt: string;
+  updatedAt: string;
+  isTrending?: boolean;
+  isFeatured?: boolean;
+}
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        bulletList: {
-          HTMLAttributes: {
-            class: "list-disc ml-4",
-          },
-        },
-        orderedList: {
-          HTMLAttributes: {
-            class: "list-decimal ml-4",
-          },
-        },
-      }),
-      Underline,
-      TextStyle,
-      Color,
-      Image,
-      Youtube,
-      FontSize.configure({
-        types: ["textStyle"],
-      }),
-      Link.configure({
-        openOnClick: false,
-      }),
-      Placeholder.configure({
-        placeholder: "Start writing your blog post...",
-      }),
-    ],
-    content: "",
-    editorProps: {
-      attributes: {
-        class: "min-h-[500px] p-4 border rounded-md focus:outline-none prose prose-sm max-w-none",
-      },
-    },
-  })
+export default function BlogManagement() {
+  const router = useRouter();
+  const [blogs, setBlogs] = useState<Blog[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [blogToDelete, setBlogToDelete] = useState<string | null>(null);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [blogToUpdateStatus, setBlogToUpdateStatus] = useState<Blog | null>(
+    null
+  );
+  const [blogStatus, setBlogStatus] = useState<
+    "none" | "trending" | "featured"
+  >("none");
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.length && editor) {
-      const file = e.target.files[0]
-      const reader = new FileReader()
-
-      reader.onload = (event) => {
-        if (event.target?.result && editor) {
-          editor
-            .chain()
-            .focus()
-            .setImage({ src: event.target.result as string })
-            .run()
-        }
-      }
-
-      reader.readAsDataURL(file)
-    }
-  }
-
-  const handleYoutubeEmbed = () => {
-    if (editor) {
-      const url = prompt("Enter YouTube URL")
-      if (url) {
-        editor.chain().focus().setYoutubeVideo({ src: url }).run()
-      }
-    }
-  }
-
-  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.length && editor) {
-      const file = e.target.files[0]
-      const url = URL.createObjectURL(file)
-
-      editor
-        .chain()
-        .focus()
-        .insertContent(`
-        <video controls width="100%">
-          <source src="${url}" type="${file.type}">
-          Your browser does not support the video tag.
-        </video>
-      `)
-        .run()
-    }
-  }
-
-  const handleLinkSubmit = () => {
-    if (editor && linkUrl) {
-      if (linkText) {
-        // If we have link text, insert it as a new link
-        editor.chain().focus().insertContent(`<a href="${linkUrl}" target="_blank">${linkText}</a>`).run()
-      } else {
-        // Otherwise, convert the selected text to a link
-        editor.chain().focus().setLink({ href: linkUrl }).run()
-      }
-
-      // Reset and close dialog
-      setLinkUrl("")
-      setLinkText("")
-      setLinkDialogOpen(false)
-    }
-  }
-
-  const handleSubmit = async () => {
-    if (!editor || !title) return
-
-    setIsSubmitting(true)
+  // Fetch all blogs
+  const fetchBlogs = async () => {
+    setIsLoading(true);
+    setError(null);
 
     try {
-      // Parse categories into an array
-      const categoriesArray = categories
-        .split(",")
-        .map((cat) => cat.trim())
-        .filter((cat) => cat !== "")
+      const response = await fetch(
+        "https://onlyfounders.azurewebsites.net/api/admin/get-all-blogs",
+        {
+          headers: {
+            user_id: "62684",
+          },
+        }
+      );
 
-      // Prepare the data to be sent to the backend
-      const blogData = {
-        title,
-        description,
-        categories: categoriesArray,
-        content: editor.getHTML(), // Store as HTML to preserve formatting
+      if (!response.ok) {
+        throw new Error("Failed to fetch blogs");
       }
-
-      // Send the data to the backend
-      const response = await fetch("http://localhost:5000/api/blog", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(blogData),
-      })
-
-      if (response.ok) {
-        // Reset the form
-        setTitle("")
-        setDescription("")
-        setCategories("")
-        editor.commands.clearContent()
-        setShowPreview(false)
-        alert("Blog post submitted successfully!")
-      } else {
-        alert("Failed to submit blog post")
-      }
-    } catch (error) {
-      console.error("Error submitting blog post:", error)
-      alert("An error occurred while submitting the blog post")
+      const data = await response.json();
+      setBlogs(Array.isArray(data) ? data : data.blogs || []);
+      console.log(data);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "An error occurred while fetching blogs"
+      );
+      console.error("Error fetching blogs:", err);
     } finally {
-      setIsSubmitting(false)
+      setIsLoading(false);
     }
-  }
+  };
 
-  if (!editor) {
-    return null
-  }
+  useEffect(() => {
+    fetchBlogs();
+  }, []);
+
+  // Handle creating a new blog
+  const handleCreateBlog = () => {
+    router.push("/admin/dashboard/blog/1");
+  };
+
+  // Handle editing a blog
+  const handleEditBlog = (blogId: string) => {
+    router.push(`/admin/dashboard/blog/${blogId}`);
+  };
+
+  // Open delete confirmation dialog
+  const openDeleteDialog = (blogId: string) => {
+    setBlogToDelete(blogId);
+    setDeleteDialogOpen(true);
+  };
+
+  // Handle deleting a blog
+  const handleDeleteBlog = async () => {
+    if (!blogToDelete) return;
+    setIsDeleting(true);
+    try {
+      const response = await fetch(
+        `https://onlyfounders.azurewebsites.net/api/admin/delete-blog/${blogToDelete}`,
+        {
+          method: "DELETE",
+          headers: {
+            user_id: "62684",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete blog");
+      }
+
+      // Remove the deleted blog from the state
+      setBlogs(blogs.filter((blog) => blog._id !== blogToDelete));
+      setDeleteDialogOpen(false);
+      setBlogToDelete(null);
+      setIsDeleting(false);
+    } catch (err) {
+      console.error("Error deleting blog:", err);
+      alert("Failed to delete blog. Please try again.");
+    }
+  };
+
+  // Open status update dialog
+  const openStatusDialog = (blog: Blog) => {
+    setBlogToUpdateStatus(blog);
+
+    // Set initial status based on blog properties
+    if (blog.isTrending) {
+      setBlogStatus("trending");
+    } else if (blog.isFeatured) {
+      setBlogStatus("featured");
+    } else {
+      setBlogStatus("none");
+    }
+
+    setStatusDialogOpen(true);
+  };
+
+  // Handle updating blog status (trending/featured)
+  const handleUpdateStatus = async () => {
+    if (!blogToUpdateStatus) return;
+
+    // Convert radio selection to boolean flags
+    const isTrending = blogStatus === "trending";
+    const isFeatured = blogStatus === "featured";
+
+    try {
+      const response = await fetch(
+        `https://onlyfounders.azurewebsites.net/api/admin/update-blog-status/${blogToUpdateStatus._id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            user_id: "62684",
+          },
+          body: JSON.stringify({
+            isTrending,
+            isFeatured,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to update blog status");
+      }
+
+      // Update the blog in the state
+      setBlogs(
+        blogs.map((blog) =>
+          blog._id === blogToUpdateStatus._id
+            ? { ...blog, isTrending, isFeatured }
+            : blog
+        )
+      );
+
+      setStatusDialogOpen(false);
+      setBlogToUpdateStatus(null);
+    } catch (err) {
+      console.error("Error updating blog status:", err);
+      alert("Failed to update blog status. Please try again.");
+    }
+  };
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
 
   return (
-    <div className="container mx-auto py-8 max-w-4xl">
-      <h1 className="text-3xl font-bold mb-6">Create New Blog Post</h1>
-
-      <div className="space-y-4 mb-4">
-        <div>
-          <Label htmlFor="title" className="block mb-2">
-            Blog Title
-          </Label>
-          <Input
-            id="title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Enter blog title"
-            className="w-full"
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="description" className="block mb-2">
-            Description
-          </Label>
-          <textarea
-            id="description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Enter blog description"
-            className="w-full min-h-[80px] p-2 border rounded-md"
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="categories" className="block mb-2">
-            Categories (comma separated)
-          </Label>
-          <Input
-            id="categories"
-            value={categories}
-            onChange={(e) => setCategories(e.target.value)}
-            placeholder="tech, news, tutorial"
-            className="w-full"
-          />
-        </div>
-      </div>
-
-      <div className="mb-4 bg-white border rounded-md shadow-sm">
-        <div className="flex flex-wrap items-center gap-1 p-2 border-b">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => editor.chain().focus().toggleBold().run()}
-            className={editor.isActive("bold") ? "bg-black/10" : ""}
-          >
-            <Bold className="h-4 w-4" />
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-            className={editor.isActive("italic") ? "bg-black/10" : ""}
-          >
-            <Italic className="h-4 w-4" />
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => editor.chain().focus().toggleUnderline().run()}
-            className={editor.isActive("underline") ? "bg-black/10" : ""}
-          >
-            <UnderlineIcon className="h-4 w-4" />
-          </Button>
-
-          <Separator orientation="vertical" className="h-6 mx-1" />
-
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <span className="text-xs">Font Size</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-40 p-2">
-              <div className="grid gap-1">
-                {["12px", "14px", "16px", "18px", "20px", "24px", "30px", "36px"].map((size) => (
-                  <Button
-                    key={size}
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => editor.chain().focus().setFontSize(size).run()}
-                  >
-                    <span style={{ fontSize: size }}>{size}</span>
-                  </Button>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          <Separator orientation="vertical" className="h-6 mx-1" />
-
-          <Separator orientation="vertical" className="h-6 mx-1" />
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-            className={editor.isActive("bulletList") ? "bg-black/10" : ""}
-          >
-            <List className="h-4 w-4" />
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => editor.chain().focus().toggleOrderedList().run()}
-            className={editor.isActive("orderedList") ? "bg-black/10" : ""}
-          >
-            <ListOrdered className="h-4 w-4" />
-          </Button>
-
-          <Separator orientation="vertical" className="h-6 mx-1" />
-
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <Palette className="h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-2">
-              <div className="grid grid-cols-8 gap-1">
-                {[
-                  "#000000",
-                  "#434343",
-                  "#666666",
-                  "#999999",
-                  "#b7b7b7",
-                  "#cccccc",
-                  "#d9d9d9",
-                  "#efefef",
-                  "#f3f3f3",
-                  "#ffffff",
-                  "#980000",
-                  "#ff0000",
-                  "#ff9900",
-                  "#ffff00",
-                  "#00ff00",
-                  "#00ffff",
-                  "#4a86e8",
-                  "#0000ff",
-                  "#9900ff",
-                  "#ff00ff",
-                  "#e6b8af",
-                  "#f4cccc",
-                  "#fce5cd",
-                  "#fff2cc",
-                  "#d9ead3",
-                  "#d0e0e3",
-                  "#c9daf8",
-                  "#cfe2f3",
-                  "#d9d2e9",
-                  "#ead1dc",
-                  "#dd7e6b",
-                  "#ea9999",
-                  "#f9cb9c",
-                  "#ffe599",
-                  "#b6d7a8",
-                  "#a2c4c9",
-                  "#a4c2f4",
-                  "#9fc5e8",
-                  "#b4a7d6",
-                  "#d5a6bd",
-                ].map((color) => (
-                  <button
-                    key={color}
-                    className="w-6 h-6 rounded-md border"
-                    style={{ backgroundColor: color }}
-                    onClick={() => editor.chain().focus().setColor(color).run()}
-                  />
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setLinkDialogOpen(true)}
-            className={editor.isActive("link") ? "bg-black/10" : ""}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="lucide lucide-link"
-            >
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-            </svg>
-          </Button>
-
-          <Separator orientation="vertical" className="h-6 mx-1" />
-
-          <div className="relative">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="relative"
-              onClick={() => document.getElementById("image-upload")?.click()}
-            >
-              <ImageIcon className="h-4 w-4" />
-            </Button>
-            <Input id="image-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-          </div>
-
-          <div className="relative">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="relative"
-              onClick={() => document.getElementById("video-upload")?.click()}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="lucide lucide-video"
-              >
-                <path d="m22 8-6 4 6 4V8Z"></path>
-                <rect width="14" height="12" x="2" y="6" rx="2" ry="2"></rect>
-              </svg>
-            </Button>
-            <Input id="video-upload" type="file" accept="video/*" className="hidden" onChange={handleVideoUpload} />
-          </div>
-
-          <Button variant="ghost" size="sm" onClick={handleYoutubeEmbed}>
-            <YoutubeIcon className="h-4 w-4" />
-          </Button>
-
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <span className="text-lg">😊</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-2">
-              <EmojiPicker
-                onEmojiSelect={(emoji) => {
-                  editor.chain().focus().insertContent(emoji).run()
-                }}
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        <EditorContent editor={editor} />
-      </div>
-
-      <div className="flex justify-end mt-4">
-        <Button variant="outline" className="mr-2" onClick={() => editor.commands.clearContent()}>
-          Clear
+    <div className="container mx-auto py-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Blog Management</h1>
+        <Button onClick={handleCreateBlog} className="cursor-pointer">
+          <Plus className="mr-2 h-4 w-4" /> Create New Blog
         </Button>
-        <Button onClick={() => setShowPreview(true)}>Preview</Button>
       </div>
 
-      <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      {isLoading ? (
+        <div className="text-center py-8">Loading blogs...</div>
+      ) : error ? (
+        <div className="text-center py-8 text-red-500">
+          {error}
+          <Button variant="outline" className="ml-4" onClick={fetchBlogs}>
+            Try Again
+          </Button>
+        </div>
+      ) : blogs.length === 0 ? (
+        <div className="text-center py-8">
+          No blogs found. Create your first blog!
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Header Image</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Categories</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead>Updated</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {blogs?.map((blog) => (
+                <TableRow key={blog._id}>
+                  <TableCell>
+                    {blog.headerImage ? (
+                      <div className="w-16 h-16 relative overflow-hidden rounded-md">
+                        <img
+                          src={blog.headerImage.file_url || "/placeholder.svg"}
+                          alt={blog.title}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-16 h-16 bg-gray-200 rounded-md flex items-center justify-center text-gray-400">
+                        No image
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell className="font-medium max-w-xs truncate">
+                    {blog.title}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      {blog.isTrending && (
+                        <Badge variant="secondary">Trending</Badge>
+                      )}
+                      {blog.isFeatured && <Badge>Featured</Badge>}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {blog.categories.map((category) => (
+                        <Badge key={category} variant="outline">
+                          {category}
+                        </Badge>
+                      ))}
+                    </div>
+                  </TableCell>
+                  <TableCell>{formatDate(blog.createdAt)}</TableCell>
+                  <TableCell>{formatDate(blog.updatedAt)}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        className="flex items-center gap-2 hover:bg-black hover:text-white cursor-pointer transition-all duration-200"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditBlog(blog._id)}
+                      >
+                        <Pencil /> Edit
+                      </Button>
+                      <Button
+                        className="flex items-center gap-2 hover:bg-red-500 hover:text-white cursor-pointer transition-all duration-200"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openDeleteDialog(blog._id)}
+                      >
+                        <Trash /> Delete
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Options</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => openStatusDialog(blog)}
+                          >
+                            Set Status (Trending/Featured)
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleEditBlog(blog._id)}
+                          >
+                            Edit Blog
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            onClick={() => openDeleteDialog(blog._id)}
+                          >
+                            Delete Blog
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>{title || "Untitled Blog Post"}</DialogTitle>
-            <DialogDescription>Preview your blog post before submitting</DialogDescription>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this blog? This action cannot be
+              undone.
+            </DialogDescription>
           </DialogHeader>
-
-          <div className="py-4">
-            <h1 className="text-2xl font-bold mb-2">{title || "Untitled Blog Post"}</h1>
-            {description && <p className="text-gray-600 mb-4">{description}</p>}
-            {categories && (
-              <div className="flex flex-wrap gap-2 mb-4">
-                {categories.split(",").map((category, index) => (
-                  <span key={index} className="px-2 py-1 bg-gray-100 rounded-full text-sm">
-                    {category.trim()}
-                  </span>
-                ))}
-              </div>
-            )}
-            <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: editor.getHTML() }} />
-          </div>
-
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPreview(false)}>
-              Continue Editing
+            <Button
+              variant="outline"
+              disabled={isDeleting}
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Submit"}
+            <Button
+              variant="destructive"
+              disabled={isDeleting}
+              onClick={handleDeleteBlog}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+      {/* Status Update Dialog */}
+      <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Insert Link</DialogTitle>
-            <DialogDescription>Add a URL and optional display text for your link.</DialogDescription>
+            <DialogTitle>Update Blog Status</DialogTitle>
+            <DialogDescription>
+              Set the visibility status for this blog.
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="url">URL</Label>
-              <Input
-                id="url"
-                placeholder="https://example.com"
-                value={linkUrl}
-                onChange={(e) => setLinkUrl(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="text">Display Text (optional)</Label>
-              <Input
-                id="text"
-                placeholder="Click here"
-                value={linkText}
-                onChange={(e) => setLinkText(e.target.value)}
-              />
-              <p className="text-sm text-muted-foreground">Leave empty to use selected text</p>
-            </div>
+            <RadioGroup
+              value={blogStatus}
+              onValueChange={(value) =>
+                setBlogStatus(value as "none" | "trending" | "featured")
+              }
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="none" id="none" />
+                <Label htmlFor="none">None</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="trending" id="trending" />
+                <Label htmlFor="trending">Trending</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="featured" id="featured" />
+                <Label htmlFor="featured">Featured</Label>
+              </div>
+            </RadioGroup>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setLinkDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setStatusDialogOpen(false)}
+            >
               Cancel
             </Button>
-            <Button onClick={handleLinkSubmit}>Insert Link</Button>
+            <Button onClick={handleUpdateStatus}>Save Changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }
