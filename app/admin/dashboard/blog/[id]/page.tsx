@@ -28,6 +28,7 @@ import FontSize from "@tiptap/extension-font-size"
 import Link from "@tiptap/extension-link"
 import { EmojiPicker } from "./emoji-picker"
 import { use } from "react"
+import HardBreak from "@tiptap/extension-hard-break"
 
 // Predefined categories
 const BLOG_CATEGORIES = [
@@ -91,11 +92,26 @@ export default function BlogEditor({ params }: { params: Promise<{ id: string }>
       Placeholder.configure({
         placeholder: "Start writing your blog post...",
       }),
+      // Configure hard break to convert Enter to <br>
+      HardBreak.configure({
+        keepMarks: true,
+        HTMLAttributes: {
+          class: "line-break",
+        },
+      }),
     ],
     content: "",
     editorProps: {
       attributes: {
         class: "min-h-[500px] p-4 border rounded-md focus:outline-none prose prose-sm max-w-none",
+      },
+      handleKeyDown: (view, event) => {
+        // Convert Enter key to hard break (br tag)
+        if (event.key === "Enter" && !event.shiftKey) {
+          view.dispatch(view.state.tr.replaceSelectionWith(view.state.schema.nodes.hardBreak.create()).scrollIntoView())
+          return true // Prevent default Enter behavior
+        }
+        return false // Let other key events pass through
       },
     },
     onUpdate: ({ editor }) => {
@@ -255,7 +271,10 @@ export default function BlogEditor({ params }: { params: Promise<{ id: string }>
         formData.append("categories", category)
       })
 
-      formData.append("content", editor.getHTML())
+      // Get HTML content with preserved line breaks
+      const htmlContent = editor.getHTML()
+      formData.append("content", htmlContent)
+
       if (headerImage) {
         formData.append("headerImage", headerImage)
       }

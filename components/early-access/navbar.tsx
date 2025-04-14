@@ -9,7 +9,7 @@ export function Navbar() {
     <header className="border-b border-border">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center">
-          <Link href="/dashboard" className="font-semibold">
+          <Link href="/admin/dashboard" className="font-semibold">
             <Image
               src="/onlyFounder_logo.svg"
               alt="OnlyFounders"
