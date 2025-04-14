@@ -18,129 +18,125 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 
 // Define the Startup type
 type Startup = {
-  _id: string
-  startupName: string
-  founder: {
-    id: string
-    name: string
-  }
-  createdAt: string
-  totalRaised: string
-  stage: "Ideation" | "Prototype" | "MVP" | "Public Beta"
-  verifiedStatus: "Verified" | "Unverified" | "blocked"
-  hasCampaign: boolean
-  isFeatured: boolean
-  featuredStatus: string
+  _id?: string
+  name: string
+  founder: string
+  created: string
   description: string
   industry: string
   location: string
-  teamSize: number
-  website: string
+  members: number
+  website: string | null
+  totalRaised: number
+  fundingStage: string
+  verification: string
+  featuredStatus: string
+  campaign: string
 }
 
 // Mock data for startups
-const startups: Startup[] = [
-  {
-    id: "1",
-    name: "TechInnovate",
-    founder: {
-      id: "1",
-      name: "Alex Johnson",
-    },
-    createdDate: "2023-01-15",
-    totalRaised: "$250,000",
-    fundingStage: "MVP",
-    verificationStatus: "verified",
-    hasCampaign: true,
-    isFeatured: true,
-    isTrending: true,
-    description: "AI-powered software solutions for small businesses",
-    industry: "Software / AI",
-    location: "San Francisco, CA",
-    teamSize: 8,
-    website: "techinnovate.example.com",
-  },
-  {
-    id: "2",
-    name: "GreenSolutions",
-    founder: {
-      id: "2",
-      name: "Sarah Williams",
-    },
-    createdDate: "2023-02-20",
-    totalRaised: "$120,000",
-    fundingStage: "Prototype",
-    verificationStatus: "verified",
-    hasCampaign: true,
-    isFeatured: true,
-    isTrending: false,
-    description: "Sustainable packaging alternatives for e-commerce",
-    industry: "CleanTech",
-    location: "Portland, OR",
-    teamSize: 5,
-    website: "greensolutions.example.com",
-  },
-  {
-    id: "3",
-    name: "HealthAI",
-    founder: {
-      id: "3",
-      name: "Michael Brown",
-    },
-    createdDate: "2023-03-10",
-    totalRaised: "$450,000",
-    fundingStage: "Public Beta",
-    verificationStatus: "verified",
-    hasCampaign: true,
-    isFeatured: false,
-    isTrending: true,
-    description: "AI diagnostics platform for healthcare providers",
-    industry: "HealthTech",
-    location: "Boston, MA",
-    teamSize: 12,
-    website: "healthai.example.com",
-  },
-  {
-    id: "4",
-    name: "UrbanMobility",
-    founder: {
-      id: "5",
-      name: "David Wilson",
-    },
-    createdDate: "2023-05-12",
-    totalRaised: "$180,000",
-    fundingStage: "Prototype",
-    verificationStatus: "not verified",
-    hasCampaign: false,
-    isFeatured: false,
-    isTrending: false,
-    description: "Electric scooter sharing platform for urban areas",
-    industry: "Transportation",
-    location: "Austin, TX",
-    teamSize: 7,
-    website: "urbanmobility.example.com",
-  },
-  {
-    id: "5",
-    name: "CryptoFinance",
-    founder: {
-      id: "4",
-      name: "Emily Davis",
-    },
-    createdDate: "2023-04-05",
-    totalRaised: "$0",
-    fundingStage: "Ideation",
-    verificationStatus: "blocked",
-    hasCampaign: false,
-    isFeatured: false,
-    isTrending: false,
-    description: "Decentralized finance solutions for small businesses",
-    industry: "FinTech / Crypto",
-    location: "Miami, FL",
-    teamSize: 3,
-    website: "cryptofinance.example.com",
-  },
-]
+// const startups: Startup[] = [
+//   {
+//     id: "1",
+//     name: "TechInnovate",
+//     founder: {
+//       id: "1",
+//       name: "Alex Johnson",
+//     },
+//     createdDate: "2023-01-15",
+//     totalRaised: "$250,000",
+//     fundingStage: "MVP",
+//     verificationStatus: "verified",
+//     hasCampaign: true,
+//     isFeatured: true,
+//     isTrending: true,
+//     description: "AI-powered software solutions for small businesses",
+//     industry: "Software / AI",
+//     location: "San Francisco, CA",
+//     teamSize: 8,
+//     website: "techinnovate.example.com",
+//   },
+//   {
+//     id: "2",
+//     name: "GreenSolutions",
+//     founder: {
+//       id: "2",
+//       name: "Sarah Williams",
+//     },
+//     createdDate: "2023-02-20",
+//     totalRaised: "$120,000",
+//     fundingStage: "Prototype",
+//     verificationStatus: "verified",
+//     hasCampaign: true,
+//     isFeatured: true,
+//     isTrending: false,
+//     description: "Sustainable packaging alternatives for e-commerce",
+//     industry: "CleanTech",
+//     location: "Portland, OR",
+//     teamSize: 5,
+//     website: "greensolutions.example.com",
+//   },
+//   {
+//     id: "3",
+//     name: "HealthAI",
+//     founder: {
+//       id: "3",
+//       name: "Michael Brown",
+//     },
+//     createdDate: "2023-03-10",
+//     totalRaised: "$450,000",
+//     fundingStage: "Public Beta",
+//     verificationStatus: "verified",
+//     hasCampaign: true,
+//     isFeatured: false,
+//     isTrending: true,
+//     description: "AI diagnostics platform for healthcare providers",
+//     industry: "HealthTech",
+//     location: "Boston, MA",
+//     teamSize: 12,
+//     website: "healthai.example.com",
+//   },
+//   {
+//     id: "4",
+//     name: "UrbanMobility",
+//     founder: {
+//       id: "5",
+//       name: "David Wilson",
+//     },
+//     createdDate: "2023-05-12",
+//     totalRaised: "$180,000",
+//     fundingStage: "Prototype",
+//     verificationStatus: "not verified",
+//     hasCampaign: false,
+//     isFeatured: false,
+//     isTrending: false,
+//     description: "Electric scooter sharing platform for urban areas",
+//     industry: "Transportation",
+//     location: "Austin, TX",
+//     teamSize: 7,
+//     website: "urbanmobility.example.com",
+//   },
+//   {
+//     id: "5",
+//     name: "CryptoFinance",
+//     founder: {
+//       id: "4",
+//       name: "Emily Davis",
+//     },
+//     createdDate: "2023-04-05",
+//     totalRaised: "$0",
+//     fundingStage: "Ideation",
+//     verificationStatus: "blocked",
+//     hasCampaign: false,
+//     isFeatured: false,
+//     isTrending: false,
+//     description: "Decentralized finance solutions for small businesses",
+//     industry: "FinTech / Crypto",
+//     location: "Miami, FL",
+//     teamSize: 3,
+//     website: "cryptofinance.example.com",
+//   },
+// ]
 
 
 
@@ -167,8 +163,9 @@ export function StartupManagement() {
           const data = await response.json();
           setStartups(data.startups || []);
         } catch (err) {
-          setError((err as Error).message);
-          console.error("Error fetching startups:", error);
+          const errorMessage = (err as Error).message;
+          setError(errorMessage);
+          console.error("Error fetching startups:", errorMessage);
         } finally {
           setLoading(false);
         }
@@ -193,7 +190,7 @@ export function StartupManagement() {
     try {
       setStatusLoading(true)
       // Check for "Verified" with capital V
-      const newStatus = startup.verifiedStatus === "Verified" ? "Unverified" : "Verified"
+      const newStatus = startup.verification === "Verified" ? "Unverified" : "Verified"
 
       const response = await fetch(
         `https://onlyfounders.azurewebsites.net/api/admin/change-verification-status/${startup._id}/${newStatus}`,
@@ -217,7 +214,7 @@ export function StartupManagement() {
     } catch (err) {
       const errorMessage = (err as Error).message
       console.error(
-        `Error ${startup.verifiedStatus === "Verified" ? "unverifying" : "verifying"} startup:`,
+        `Error ${startup.verification === "Verified" ? "unverifying" : "verifying"} startup:`,
         errorMessage,
       )
       setError(errorMessage)
@@ -260,22 +257,22 @@ export function StartupManagement() {
 
   const handleBlockUnblock = (startup: Startup) => {
     // In a real implementation, this would call an API to update the startup's status
-    console.log(`${startup.verificationStatus === "blocked" ? "Unblocking" : "Blocking"} ${startup.startupName}`)
+    console.log(`${startup.verification === "blocked" ? "Unblocking" : "Blocking"} ${startup.startupName}`)
   }
 
   const handleViewCampaign = (startup: Startup) => {
     // In a real implementation, this would navigate to the campaign page
-    console.log(`Viewing campaign for ${startup.startupName}`)
+    console.log(`Viewing campaign for ${startup.name}`)
   }
 
   const handleToggleFeatured = (startup: Startup) => {
     // In a real implementation, this would call an API to update the startup's featured status
-    console.log(`${startup.isFeatured ? "Removing from" : "Adding to"} featured: ${startup.startupName}`)
+    console.log(`${startup.featuredStatus ? "Removing from" : "Adding to"} featured: ${startup.name}`)
   }
 
   const handleToggleTrending = (startup: Startup) => {
     // In a real implementation, this would call an API to update the startup's trending status
-    console.log(`${startup.isTrending ? "Removing from" : "Adding to"} trending: ${startup.startupName}`)
+    console.log(`${startup.featuredStatus ? "Removing from" : "Adding to"} trending: ${startup.name}`)
   }
 
   // Helper function to get the appropriate badge variant based on verification status
@@ -312,7 +309,7 @@ export function StartupManagement() {
               <TableRow key={startup._id} className="border-t border-border">
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-1">
-                    {startup.startupName}
+                    {startup.name}
                     {startup.featuredStatus === 'Featured' && <Star className="h-4 w-4 text-primary ml-1" />}
                     {startup.featuredStatus === 'Trending' && <TrendingUp className="h-4 w-4 text-primary ml-1" />}
                   </div>
@@ -322,16 +319,16 @@ export function StartupManagement() {
                     href={`/dashboard/users?founder=${startup._id}`}
                     className="text-primary hover:underline"
                   >
-                    {startup.startupName}
+                    {startup.name}
                   </Link>
                 </TableCell>
-                <TableCell>{formatDate(startup.createdAt)}</TableCell>
+                <TableCell>{formatDate(startup.created)}</TableCell>
                 <TableCell>{startup.totalRaised}</TableCell>
-                <TableCell>{startup.stage}</TableCell>
+                <TableCell>{startup.fundingStage}</TableCell>
                 <TableCell>
                 <div className="flex flex-row gap-1 items-center">
-                    <Badge variant={getVerificationBadgeVariant(startup.verifiedStatus)} className="capitalize">
-                      {startup.verifiedStatus.replace("-", " ")}
+                    <Badge variant={getVerificationBadgeVariant(startup.verification)} className="capitalize">
+                      {startup.verification.replace("-", " ")}
                     </Badge>
                     {startup.featuredStatus && (
                       <Badge
@@ -358,7 +355,7 @@ export function StartupManagement() {
                         <Eye className="mr-2 h-4 w-4" />
                         View Startup
                       </DropdownMenuItem>
-                      {startup.hasCampaign && (
+                      {startup.campaign && (
                         <DropdownMenuItem onClick={() => handleViewCampaign(startup)}>
                           <Eye className="mr-2 h-4 w-4" />
                           View Campaign
@@ -367,14 +364,14 @@ export function StartupManagement() {
                       <DropdownMenuSeparator />
 
                       {/* Verify/Unverify option */}
-                      {startup.verificationStatus !== "blocked" && (
+                      {startup.verification !== "blocked" && (
                         <DropdownMenuItem
                           onClick={() => handleVerifyUnverify(startup)}
-                          className={startup.verifiedStatus === "Verified" ? "text-red-500" : "text-green-500"}
+                          className={startup.verification === "Verified" ? "text-red-500" : "text-green-500"}
                           
                         >
                           <BadgeCheck className="mr-2 h-4 w-4" />
-                          {startup.verifiedStatus === "Verified" ? "Unverify" : "Verify"}
+                          {startup.verification === "Verified" ? "Unverify" : "Verify"}
                         </DropdownMenuItem>
                       )}
 
@@ -445,9 +442,9 @@ export function StartupManagement() {
                       {/* Block/Unblock option */}
                       <DropdownMenuItem
                         onClick={() => handleBlockUnblock(startup)}
-                        className={startup.verificationStatus === "blocked" ? "text-green-500" : "text-red-500"}
+                        className={startup.verification === "blocked" ? "text-green-500" : "text-red-500"}
                       >
-                        {startup.verificationStatus === "blocked" ? (
+                        {startup.verification === "blocked" ? (
                           <>
                             <CheckCircle className="mr-2 h-4 w-4" />
                             Unblock
@@ -481,8 +478,8 @@ export function StartupManagement() {
                 <div className="font-medium">Name:</div>
                 <div className="col-span-3 flex items-center">
                   {selectedStartup.name}
-                  {selectedStartup.isFeatured && <Star className="h-4 w-4 text-primary ml-2" />}
-                  {selectedStartup.isTrending && <TrendingUp className="h-4 w-4 text-primary ml-2" />}
+                  {selectedStartup.featuredStatus && <Star className="h-4 w-4 text-primary ml-2" />}
+                  {selectedStartup.featuredStatus && <TrendingUp className="h-4 w-4 text-primary ml-2" />}
                 </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
@@ -498,7 +495,7 @@ export function StartupManagement() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <div className="font-medium">Created:</div>
-                <div className="col-span-3">{formatDate(selectedStartup.createdDate)}</div>
+                <div className="col-span-3">{formatDate(selectedStartup.created)}</div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <div className="font-medium">Description:</div>
@@ -551,16 +548,16 @@ export function StartupManagement() {
               <div className="grid grid-cols-4 items-center gap-4">
                 <div className="font-medium">Featured:</div>
                 <div className="col-span-3">
-                  <Badge variant={selectedStartup.isFeatured ? "outline" : "secondary"}>
-                    {selectedStartup.isFeatured ? "Yes" : "No"}
+                  <Badge variant={selectedStartup.featuredStatus ? "outline" : "secondary"}>
+                    {selectedStartup.featuredStatus ? "Yes" : "No"}
                   </Badge>
                 </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <div className="font-medium">Trending:</div>
                 <div className="col-span-3">
-                  <Badge variant={selectedStartup.isTrending ? "outline" : "secondary"}>
-                    {selectedStartup.isTrending ? "Yes" : "No"}
+                  <Badge variant={selectedStartup.featuredStatus ? "outline" : "secondary"}>
+                    {selectedStartup.featuredStatus ? "Yes" : "No"}
                   </Badge>
                 </div>
               </div>
@@ -585,18 +582,18 @@ export function StartupManagement() {
 
               <div className="flex flex-wrap justify-end gap-2 mt-4">
                 {/* Verify/Unverify button */}
-                {selectedStartup.verificationStatus !== "blocked" && (
+                {selectedStartup.verification !== "blocked" && (
                   <Button
                     variant="outline"
                     className={
-                      selectedStartup.verificationStatus === "verified"
+                      selectedStartup.verification === "verified"
                         ? "border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
                         : "border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
                     }
                     onClick={() => handleVerifyUnverify(selectedStartup)}
                   >
                     <BadgeCheck className="mr-2 h-4 w-4" />
-                    {selectedStartup.verificationStatus === "verified" ? "Unverify Startup" : "Verify Startup"}
+                    {selectedStartup.verification === "verified" ? "Unverify Startup" : "Verify Startup"}
                   </Button>
                 )}
 
@@ -604,41 +601,41 @@ export function StartupManagement() {
                 <Button
                   variant="outline"
                   className={
-                    selectedStartup.isFeatured
+                    selectedStartup.featuredStatus
                       ? "border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
                       : "border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
                   }
                   onClick={() => handleToggleFeatured(selectedStartup)}
                 >
                   <Star className="mr-2 h-4 w-4" />
-                  {selectedStartup.isFeatured ? "Remove from Featured" : "Add to Featured"}
+                  {selectedStartup.featuredStatus ? "Remove from Featured" : "Add to Featured"}
                 </Button>
 
                 {/* Trending button */}
                 <Button
                   variant="outline"
                   className={
-                    selectedStartup.isTrending
+                    selectedStartup.featuredStatus
                       ? "border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
                       : "border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
                   }
                   onClick={() => handleToggleTrending(selectedStartup)}
                 >
                   <TrendingUp className="mr-2 h-4 w-4" />
-                  {selectedStartup.isTrending ? "Remove from Trending" : "Add to Trending"}
+                  {selectedStartup.featuredStatus ? "Remove from Trending" : "Add to Trending"}
                 </Button>
 
                 {/* Block/Unblock button */}
                 <Button
                   variant="outline"
                   className={
-                    selectedStartup.verificationStatus === "blocked"
+                    selectedStartup.verification === "blocked"
                       ? "border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
                       : "border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
                   }
                   onClick={() => handleBlockUnblock(selectedStartup)}
                 >
-                  {selectedStartup.verificationStatus === "blocked" ? (
+                  {selectedStartup.verification === "blocked" ? (
                     <>
                       <CheckCircle className="mr-2 h-4 w-4" />
                       Unblock Startup
