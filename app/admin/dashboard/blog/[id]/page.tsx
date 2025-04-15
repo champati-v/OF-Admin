@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useEditor, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import Underline from "@tiptap/extension-underline"
@@ -23,10 +23,30 @@ import { Bold, Italic, UnderlineIcon, List, ListOrdered, Palette, ArrowLeft } fr
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Separator } from "@/components/ui/separator"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import FontSize from "@tiptap/extension-font-size"
 import Link from "@tiptap/extension-link"
 import { EmojiPicker } from "./emoji-picker"
 import { use } from "react"
+import HardBreak from "@tiptap/extension-hard-break"
+
+// Predefined categories
+const BLOG_CATEGORIES = [
+  "Networking",
+  "Marketing & Growth",
+  "Business Development",
+  "Fund Raising",
+  "Go-to-Market",
+  "Tokenomics",
+  "Community",
+  "User Engagement",
+  "Legal and Regulations",
+  "Industry Insights",
+  "Best Practices",
+  "Case Studies",
+  "Product development",
+  "Mental Health",
+]
 
 export default function BlogEditor({ params }: { params: Promise<{ id: string }> }) {
   const [title, setTitle] = useState("")
@@ -35,13 +55,16 @@ export default function BlogEditor({ params }: { params: Promise<{ id: string }>
   const [showPreview, setShowPreview] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [description, setDescription] = useState("")
-  const [categories, setCategories] = useState("")
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [linkDialogOpen, setLinkDialogOpen] = useState(false)
   const [linkUrl, setLinkUrl] = useState("")
   const [linkText, setLinkText] = useState("")
   const [isEditMode, setIsEditMode] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const { id } = use(params)
+
+  // Store original categories to track changes
+  const originalCategoriesRef = useRef<string[]>([])
 
   const editor = useEditor({
     extensions: [
@@ -69,11 +92,26 @@ export default function BlogEditor({ params }: { params: Promise<{ id: string }>
       Placeholder.configure({
         placeholder: "Start writing your blog post...",
       }),
+      // Configure hard break to convert Enter to <br>
+      HardBreak.configure({
+        keepMarks: true,
+        HTMLAttributes: {
+          class: "line-break",
+        },
+      }),
     ],
     content: "",
     editorProps: {
       attributes: {
         class: "min-h-[500px] p-4 border rounded-md focus:outline-none prose prose-sm max-w-none",
+      },
+      handleKeyDown: (view, event) => {
+        // Convert Enter key to hard break (br tag)
+        if (event.key === "Enter" && !event.shiftKey) {
+          view.dispatch(view.state.tr.replaceSelectionWith(view.state.schema.nodes.hardBreak.create()).scrollIntoView())
+          return true // Prevent default Enter behavior
+        }
+        return false // Let other key events pass through
       },
     },
     onUpdate: ({ editor }) => {
@@ -106,11 +144,15 @@ export default function BlogEditor({ params }: { params: Promise<{ id: string }>
 
           // Handle categories
           if (data.categories && Array.isArray(data.categories)) {
-            // Remove any quotes from the categories
-            const cleanedCategories = data.categories
+            // Process categories for checkbox selection
+            const processedCategories = data.categories
               .map((cat: string) => cat.replace(/^"(.*)"$/, "$1").trim())
-              .join(", ")
-            setCategories(cleanedCategories)
+              .flatMap((cat: string) => cat.split(",").map((c) => c.trim()))
+              .filter((cat: string) => cat !== "")
+
+            setSelectedCategories(processedCategories)
+            // Store original categories for comparison later
+            originalCategoriesRef.current = [...processedCategories]
           }
 
           // Set editor content when editor is ready
@@ -182,6 +224,17 @@ export default function BlogEditor({ params }: { params: Promise<{ id: string }>
     }
   }
 
+  const handleCategoryChange = (category: string, checked: boolean) => {
+    if (checked) {
+      setSelectedCategories((prev) => {
+        if (prev.includes(category)) return prev
+        return [...prev, category]
+      })
+    } else {
+      setSelectedCategories((prev) => prev.filter((cat) => cat !== category))
+    }
+  }
+
   const handleLinkSubmit = () => {
     if (editor && linkUrl) {
       if (linkText) {
@@ -205,22 +258,28 @@ export default function BlogEditor({ params }: { params: Promise<{ id: string }>
     setIsSubmitting(true)
 
     try {
-      // Parse categories into an array
-      const categoriesArray = categories
-      .split(",")
-      .map((cat) => cat.trim())
-      .filter((cat) => cat !== "");
-
-      console.log(categoriesArray)
       // Prepare form data
       const formData = new FormData()
       formData.append("title", title)
       formData.append("description", description)
-      formData.append("categories", JSON.stringify(categoriesArray))
-      formData.append("content", editor.getHTML())
+
+      // Get unique categories to send to the backend
+      const uniqueCategories = Array.from(new Set(selectedCategories))
+
+      // Append each category to the form data
+      uniqueCategories.forEach((category) => {
+        formData.append("categories", category)
+      })
+
+      // Get HTML content with preserved line breaks
+      const htmlContent = editor.getHTML()
+      formData.append("content", htmlContent)
+
       if (headerImage) {
         formData.append("headerImage", headerImage)
       }
+
+      console.log("Sending categories:", uniqueCategories)
 
       let response
 
@@ -250,8 +309,11 @@ export default function BlogEditor({ params }: { params: Promise<{ id: string }>
           setDescription("")
           setHeaderImage(null)
           setHeaderImageSrc("")
-          setCategories("")
+          setSelectedCategories([])
           editor.commands.clearContent()
+        } else {
+          // Update original categories reference after successful edit
+          originalCategoriesRef.current = [...uniqueCategories]
         }
         setShowPreview(false)
         alert(isEditMode ? "Blog post updated successfully!" : "Blog post submitted successfully!")
@@ -278,7 +340,12 @@ export default function BlogEditor({ params }: { params: Promise<{ id: string }>
     <div className="container mx-auto py-8 max-w-4xl">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold mb-6">{isEditMode ? "Edit Blog Post" : "Create New Blog Post"}</h1>
-        <a href="/admin/dashboard/blog" className="flex items-center gap-2 bg-black text-white hover:bg-black/80 transition-all duration-200 rounded-md px-2 py-1 "><ArrowLeft className="h-5 w-5"/> Back</a>
+        <a
+          href="/admin/dashboard/blog"
+          className="flex items-center gap-2 bg-black text-white hover:bg-black/80 transition-all duration-200 rounded-md px-2 py-1 "
+        >
+          <ArrowLeft className="h-5 w-5" /> Back
+        </a>
       </div>
 
       <div className="space-y-4 mb-4">
@@ -335,16 +402,21 @@ export default function BlogEditor({ params }: { params: Promise<{ id: string }>
         </div>
 
         <div>
-          <Label htmlFor="categories" className="block mb-2">
-            Categories (comma separated)
-          </Label>
-          <Input
-            id="categories"
-            value={categories}
-            onChange={(e) => setCategories(e.target.value)}
-            placeholder="tech, news, tutorial"
-            className="w-full"
-          />
+          <Label className="block mb-2">Categories</Label>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 border rounded-md p-3">
+            {BLOG_CATEGORIES.map((category) => (
+              <div key={category} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`category-${category}`}
+                  checked={selectedCategories.includes(category)}
+                  onCheckedChange={(checked) => handleCategoryChange(category, checked as boolean)}
+                />
+                <Label htmlFor={`category-${category}`} className="text-sm cursor-pointer">
+                  {category}
+                </Label>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -552,11 +624,11 @@ export default function BlogEditor({ params }: { params: Promise<{ id: string }>
             )}
             <h1 className="text-2xl font-bold mb-2">{title || "Untitled Blog Post"}</h1>
             {description && <p className="text-gray-600 mb-4">{description}</p>}
-            {categories && (
+            {selectedCategories.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-4">
-                {categories.split(",").map((category, index) => (
+                {selectedCategories.map((category, index) => (
                   <span key={index} className="px-2 py-1 bg-gray-100 rounded-full text-sm">
-                    {category.trim()}
+                    {category}
                   </span>
                 ))}
               </div>
