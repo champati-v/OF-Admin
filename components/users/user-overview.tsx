@@ -15,7 +15,7 @@ export function UsersOverview() {
   const stats = {
     founders: founders.length,
     investors: investors.length,
-    serviceProviders: "NA",
+    serviceProviders: serviceProviders.length,
   }
 
   const API_URL = "https://onlyfounders.azurewebsites.net/api/admin/profiles/"
@@ -45,6 +45,27 @@ export function UsersOverview() {
       const fetchFounders = async () => {
         try {
           const response = await fetch(API_URL+"Investor", {
+            method: "GET",
+            headers:{
+              user_id: "62684",
+            },
+          })
+          if (!response.ok) throw new Error("Failed to fetch data")
+          const data = await response.json()
+          setServiceProviders(data.profiles || [])
+        } catch (err) {
+          setError((err as Error).message)
+        } finally {
+          setLoading(false)
+        }
+      }
+      fetchFounders()
+    }, [])
+
+    useEffect(() => {
+      const fetchFounders = async () => {
+        try {
+          const response = await fetch(API_URL+"ServiceProvider", {
             method: "GET",
             headers:{
               user_id: "62684",
