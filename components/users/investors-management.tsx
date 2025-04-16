@@ -24,7 +24,7 @@ type Investor = {
   professionalTitle: string
   bio?: string
   location?: string
-  email?: string
+  email: string
   role: string
   status: string
   completedStatus: boolean
@@ -52,7 +52,7 @@ type FormattedInvestor = {
   joinedDate: string
   totalInvestments: number
   capitalDeployed: string
-  portfolioValue: string
+  professionalTitle: string
   status: string
   profilePic?: string
   location?: string
@@ -72,7 +72,7 @@ export function InvestorsManagement() {
     const fetchInvestors = async () => {
       try {
         setIsLoading(true)
-        const response = await fetch("https://onlyfounders.azurewebsites.net/api/admin/profiles/Founder", {
+        const response = await fetch("https://onlyfounders.azurewebsites.net/api/admin/profiles/Investor", {
           headers: {
             user_id: "62684",
           },
@@ -88,11 +88,13 @@ export function InvestorsManagement() {
         const formattedData = data.profiles.map((investor: Investor) => ({
           id: investor._id,
           name: investor.username || "Unknown",
-          email: investor.user_id, // Using user_id as email since email is not provided
+          email: investor.email, // Using user_id as email since email is not provided
           joinedDate: investor.createdAt,
-          totalInvestments: Math.floor(Math.random() * 10) + 1, // Random number for demo
-          capitalDeployed: `$${(Math.floor(Math.random() * 900) + 100).toLocaleString()}k`, // Random amount for demo
-          portfolioValue: `$${(Math.floor(Math.random() * 1200) + 100).toLocaleString()}k`, // Random amount for demo
+          // totalInvestments: Math.floor(Math.random() * 10) + 1, // Random number for demo
+          totalInvestments: 0,
+          professionalTitle: investor.professionalTitle || "Unknown",
+          // capitalDeployed: `$${(Math.floor(Math.random() * 900) + 100).toLocaleString()}k`, // Random amount for demo
+          // portfolioValue: `$${(Math.floor(Math.random() * 1200) + 100).toLocaleString()}k`, // Random amount for demo
           status: investor.status?.toLowerCase() || "unknown",
           profilePic: investor.profilePic?.file_url,
           location: investor.location,
@@ -131,46 +133,64 @@ export function InvestorsManagement() {
     setShowProfile(true)
   }
 
-  const handleBlockUnblock = async (investor: FormattedInvestor) => {
-    // In a real implementation, this would call an API to update the user's status
+  const handleStatusChange = async (investor: FormattedInvestor, newStatus: string) => {
     try {
-      // This is a placeholder for the actual API call
-      console.log(`${investor.status === "verified" ? "Blocking" : "Unblocking"} ${investor.name}`)
-
+      console.log(`Changing ${investor.name}'s status to ${newStatus}`)
+  
+      // Determine the actual new status value for UI and API
+      let displayStatus = newStatus
+  
+      if (newStatus === "unblocked" || newStatus === "unsuspended") {
+        displayStatus = "unverified"
+      }
+  
+      const prevStatus = investor.status // for rollback
+  
       // Optimistic UI update
       setInvestors((prevInvestors) =>
         prevInvestors.map((inv) =>
-          inv.id === investor.id ? { ...inv, status: inv.status === "verified" ? "blocked" : "verified" } : inv,
+          inv.id === investor.id ? { ...inv, status: displayStatus } : inv,
         ),
       )
-
-      // If the selected investor is being blocked/unblocked, update that too
+  
       if (selectedInvestor && selectedInvestor.id === investor.id) {
         setSelectedInvestor({
           ...selectedInvestor,
-          status: selectedInvestor.status === "verified" ? "blocked" : "verified",
+          status: displayStatus,
         })
       }
-
-      // Here you would make the actual API call to update the status
-      // const response = await fetch(`https://onlyfounders.azurewebsites.net/api/admin/profiles/${investor.id}/status`, {
-      //   method: 'PUT',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'user_id': '62684'
-      //   },
-      //   body: JSON.stringify({
-      //     status: investor.status === "verified" ? "blocked" : "verified"
-      //   })
-      // })
-
-      // if (!response.ok) throw new Error('Failed to update status')
+  
+      // Make the actual API call
+      const response = await fetch(`https://onlyfounders.azurewebsites.net/api/admin/change-status/${investor.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          user_id: "62684",
+        },
+        body: JSON.stringify({
+          status: displayStatus,
+        }),
+      })
+  
+      if (!response.ok) {
+        throw new Error("Failed to update status")
+      }
     } catch (err) {
       console.error("Error updating investor status:", err)
-      // Revert the optimistic update if the API call fails
-      // You would add error handling here
+  
+      // Revert optimistic update
+      setInvestors((prevInvestors) =>
+        prevInvestors.map((inv) =>
+          inv.id === investor.id ? { ...inv, status: investor.status } : inv,
+        ),
+      )
+  
+      if (selectedInvestor && selectedInvestor.id === investor.id) {
+        setSelectedInvestor({ ...selectedInvestor, status: investor.status })
+      }
     }
   }
+  
 
   // Add the new handler function
   const handleViewDashboard = (investor: FormattedInvestor) => {
@@ -259,22 +279,60 @@ export function InvestorsManagement() {
                             View Dashboard
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => handleBlockUnblock(investor)}
-                            className={investor.status === "verified" ? "text-red-500" : "text-green-500"}
+
+                          {investor.status === "verified" ? (
+                            <DropdownMenuItem
+                              onClick={() => handleStatusChange(investor, "unverified")}
+                              className="text-amber-500"
+                            >
+                              <Ban className="mr-2 h-4 w-4" />
+                              Unverify
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem
+                              onClick={() => handleStatusChange(investor, "verified")}
+                              className="text-green-500"
+                            >
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Verify
+                            </DropdownMenuItem>
+                          )}
+
+                          {investor.status === "blocked" ? (
+                            <DropdownMenuItem
+                              onClick={() => handleStatusChange(investor, "unblocked")}
+                              className="text-green-500"
+                            >
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Unblock
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem
+                              onClick={() => handleStatusChange(investor, "blocked")}
+                              className="text-red-500"
+                            >
+                              <Ban className="mr-2 h-4 w-4" />
+                              Block
+                            </DropdownMenuItem>
+                          )}
+
+                          {investor.status === "suspended" ? (
+                            <DropdownMenuItem
+                            onClick={() => handleStatusChange(investor, "unsuspended")}
+                            className="text-green-500"
                           >
-                            {investor.status === "verified" ? (
-                              <>
-                                <Ban className="mr-2 h-4 w-4" />
-                                Block
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle className="mr-2 h-4 w-4" />
-                                Unblock
-                              </>
-                            )}
+                            <CheckCircle className="mr-2 h-4 w-4" />
+                            Unsuspend
                           </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem
+                            onClick={() => handleStatusChange(investor, "suspended")}
+                            className="text-orange-500"
+                          >
+                            <Ban className="mr-2 h-4 w-4" />
+                            Suspend
+                          </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -422,20 +480,60 @@ export function InvestorsManagement() {
                 {selectedInvestor.status === "verified" ? (
                   <Button
                     variant="outline"
-                    className="border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
-                    onClick={() => handleBlockUnblock(selectedInvestor)}
+                    className="border-amber-500 text-amber-500 hover:bg-amber-50 hover:text-amber-600"
+                    onClick={() => handleStatusChange(selectedInvestor, "unverified")}
                   >
                     <Ban className="mr-2 h-4 w-4" />
-                    Block Investor
+                    Unverify
                   </Button>
                 ) : (
                   <Button
                     variant="outline"
                     className="border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
-                    onClick={() => handleBlockUnblock(selectedInvestor)}
+                    onClick={() => handleStatusChange(selectedInvestor, "verified")}
                   >
                     <CheckCircle className="mr-2 h-4 w-4" />
-                    Unblock Investor
+                    Verify
+                  </Button>
+                )}
+
+                {selectedInvestor.status === "blocked" ? (
+                  <Button
+                    variant="outline"
+                    className="border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
+                    onClick={() => handleStatusChange(selectedInvestor, "unblocked")}
+                  >
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Unblock
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
+                    onClick={() => handleStatusChange(selectedInvestor, "blocked")}
+                  >
+                    <Ban className="mr-2 h-4 w-4" />
+                    Block
+                  </Button>
+                )}
+
+                {selectedInvestor.status === "suspended" ? (
+                  <Button
+                    variant="outline"
+                    className="border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
+                    onClick={() => handleStatusChange(selectedInvestor, "unblocked")}
+                  >
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Unsuspend
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="border-orange-500 text-orange-500 hover:bg-orange-50 hover:text-orange-600"
+                    onClick={() => handleStatusChange(selectedInvestor, "suspended")}
+                  >
+                    <Ban className="mr-2 h-4 w-4" />
+                    Suspend
                   </Button>
                 )}
               </div>
