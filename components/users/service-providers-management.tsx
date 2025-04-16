@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   DropdownMenu,
@@ -16,62 +16,83 @@ import { MoreHorizontal, Eye, Ban, CheckCircle } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { UserCounts } from "./user-counts"
 
-// Define the ServiceProvider type
+// Replace the ServiceProvider type with a type that matches the API response
 type ServiceProvider = {
-  id: string
-  name: string
+  _id: string
+  user_id: string
+  role: string
+  status: string
+  username: string
   email: string
-  joinedDate: string
-  status: "active" | "blocked"
+  bio?: string
+  location?: string
+  professionalTitle?: string
+  profilePic?: {
+    file_name: string
+    file_url: string
+    _id: string
+  }
+  createdAt: string
+  updatedAt: string
+  serviceProviderData?: {
+    buisnessName: string
+    nameOfServiceProvider: string
+    email: string
+    category: string
+    serviceDescription: string
+    pricingModel: string
+    websiteUrl: string
+    companySocialLinks: Record<string, string>
+    personalSocialLinks: Record<string, string>
+    _id: string
+    createdAt: string
+    updatedAt: string
+  }
 }
 
-// Mock data for service providers
-const serviceProviders: ServiceProvider[] = [
-  {
-    id: "1",
-    name: "Jennifer Adams",
-    email: "jennifer@example.com",
-    joinedDate: "2023-01-25",
-    status: "active",
-  },
-  {
-    id: "2",
-    name: "Thomas Wilson",
-    email: "thomas@example.com",
-    joinedDate: "2023-02-10",
-    status: "active",
-  },
-  {
-    id: "3",
-    name: "Patricia Moore",
-    email: "patricia@example.com",
-    joinedDate: "2023-03-15",
-    status: "blocked",
-  },
-  {
-    id: "4",
-    name: "Richard Taylor",
-    email: "richard@example.com",
-    joinedDate: "2023-04-12",
-    status: "active",
-  },
-  {
-    id: "5",
-    name: "Barbara Martin",
-    email: "barbara@example.com",
-    joinedDate: "2023-05-20",
-    status: "active",
-  },
-]
-
+// Replace the mock data with a useState and useEffect to fetch from the API
 export function ServiceProvidersManagement() {
+  const [serviceProviders, setServiceProviders] = useState<ServiceProvider[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [selectedProvider, setSelectedProvider] = useState<ServiceProvider | null>(null)
   const [showProfile, setShowProfile] = useState(false)
 
+  useEffect(() => {
+    const fetchServiceProviders = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch("https://onlyfounders.azurewebsites.net/api/admin/profiles/ServiceProvider", {
+          headers: {
+            user_id: "62684",
+          },
+        })
+
+        if (!response.ok) {
+          throw new Error(`API request failed with status ${response.status}`)
+        }
+
+        const data = await response.json()
+        setServiceProviders(data.profiles)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An unknown error occurred")
+        console.error("Error fetching service providers:", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchServiceProviders()
+  }, [])
+
   // Calculate counts
   const totalProviders = serviceProviders.length
-  const activeProviders = serviceProviders.filter((p) => p.status === "active").length
-  const blockedProviders = serviceProviders.filter((p) => p.status === "blocked").length
+  const activeProviders = serviceProviders.filter(
+    (p) => p.status?.toLowerCase() === "active" || p.status === "Verified",
+  ).length
+  const blockedProviders = serviceProviders.filter(
+    (p) => p.status?.toLowerCase() === "suspended" || p.status?.toLowerCase() === "blocked",
+  ).length
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -88,7 +109,15 @@ export function ServiceProvidersManagement() {
 
   const handleBlockUnblock = (provider: ServiceProvider) => {
     // In a real implementation, this would call an API to update the user's status
-    console.log(`${provider.status === "active" ? "Blocking" : "Unblocking"} ${provider.name}`)
+    console.log(`${provider.status?.toLowerCase() === "suspended" ? "Unblocking" : "Blocking"} ${provider.username}`)
+  }
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-64">Loading service providers...</div>
+  }
+
+  if (error) {
+    return <div className="text-red-500 p-4 border border-red-300 rounded">Error: {error}</div>
   }
 
   return (
@@ -113,12 +142,19 @@ export function ServiceProvidersManagement() {
           </TableHeader>
           <TableBody>
             {serviceProviders.map((provider) => (
-              <TableRow key={provider.id} className="border-t border-border">
-                <TableCell className="font-medium">{provider.name}</TableCell>
+              <TableRow key={provider._id} className="border-t border-border">
+                <TableCell className="font-medium">{provider.username}</TableCell>
                 <TableCell>{provider.email}</TableCell>
-                <TableCell>{formatDate(provider.joinedDate)}</TableCell>
+                <TableCell>{formatDate(provider.createdAt)}</TableCell>
                 <TableCell>
-                  <Badge variant={provider.status === "active" ? "outline" : "destructive"} className="capitalize">
+                  <Badge
+                    variant={
+                      provider.status?.toLowerCase() === "suspended" || provider.status?.toLowerCase() === "blocked"
+                        ? "destructive"
+                        : "outline"
+                    }
+                    className="capitalize"
+                  >
                     {provider.status}
                   </Badge>
                 </TableCell>
@@ -140,17 +176,22 @@ export function ServiceProvidersManagement() {
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={() => handleBlockUnblock(provider)}
-                        className={provider.status === "active" ? "text-red-500" : "text-green-500"}
+                        className={
+                          provider.status?.toLowerCase() === "suspended" || provider.status?.toLowerCase() === "blocked"
+                            ? "text-green-500"
+                            : "text-red-500"
+                        }
                       >
-                        {provider.status === "active" ? (
-                          <>
-                            <Ban className="mr-2 h-4 w-4" />
-                            Block
-                          </>
-                        ) : (
+                        {provider.status?.toLowerCase() === "suspended" ||
+                        provider.status?.toLowerCase() === "blocked" ? (
                           <>
                             <CheckCircle className="mr-2 h-4 w-4" />
                             Unblock
+                          </>
+                        ) : (
+                          <>
+                            <Ban className="mr-2 h-4 w-4" />
+                            Block
                           </>
                         )}
                       </DropdownMenuItem>
@@ -169,26 +210,44 @@ export function ServiceProvidersManagement() {
           <DialogContent className="sm:max-w-[600px] border border-border">
             <DialogHeader>
               <DialogTitle>Service Provider Profile</DialogTitle>
-              <DialogDescription>Profile details for {selectedProvider.name}</DialogDescription>
+              <DialogDescription>Profile details for {selectedProvider.username}</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              {selectedProvider.profilePic && (
+                <div className="flex justify-center">
+                  <img
+                    src={selectedProvider.profilePic.file_url || "/placeholder.svg"}
+                    alt={`${selectedProvider.username}'s profile`}
+                    className="w-24 h-24 rounded-full object-cover border-2 border-border"
+                  />
+                </div>
+              )}
+
               <div className="grid grid-cols-4 items-center gap-4">
                 <div className="font-medium">Name:</div>
-                <div className="col-span-3">{selectedProvider.name}</div>
+                <div className="col-span-3">{selectedProvider.username}</div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <div className="font-medium">Email:</div>
                 <div className="col-span-3">{selectedProvider.email}</div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
+                <div className="font-medium">User ID:</div>
+                <div className="col-span-3">{selectedProvider.user_id}</div>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
                 <div className="font-medium">Joined:</div>
-                <div className="col-span-3">{formatDate(selectedProvider.joinedDate)}</div>
+                <div className="col-span-3">{formatDate(selectedProvider.createdAt)}</div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <div className="font-medium">Status:</div>
                 <div className="col-span-3">
                   <Badge
-                    variant={selectedProvider.status === "active" ? "outline" : "destructive"}
+                    variant={
+                      provider.status?.toLowerCase() === "suspended" || provider.status?.toLowerCase() === "blocked"
+                        ? "destructive"
+                        : "outline"
+                    }
                     className="capitalize"
                   >
                     {selectedProvider.status}
@@ -196,33 +255,70 @@ export function ServiceProvidersManagement() {
                 </div>
               </div>
 
-              <div className="mt-4">
-                <h3 className="text-lg font-medium mb-2">Service Details</h3>
-                <div className="rounded-md border border-border p-4">
-                  <p className="text-muted-foreground">
-                    This service provider has not registered any specific services yet.
-                  </p>
+              {selectedProvider.professionalTitle && (
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <div className="font-medium">Title:</div>
+                  <div className="col-span-3">{selectedProvider.professionalTitle}</div>
                 </div>
-              </div>
+              )}
 
-              <div className="mt-2">
-                <h3 className="text-lg font-medium mb-2">Engagement History</h3>
-                <div className="rounded-md border border-border p-4">
-                  <p className="text-muted-foreground">No engagement history available.</p>
+              {selectedProvider.location && (
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <div className="font-medium">Location:</div>
+                  <div className="col-span-3">{selectedProvider.location}</div>
                 </div>
-              </div>
+              )}
+
+              {selectedProvider.bio && (
+                <div className="grid grid-cols-4 items-start gap-4">
+                  <div className="font-medium">Bio:</div>
+                  <div className="col-span-3">{selectedProvider.bio}</div>
+                </div>
+              )}
+
+              {selectedProvider.serviceProviderData && (
+                <div className="mt-4">
+                  <h3 className="text-lg font-medium mb-2">Service Details</h3>
+                  <div className="rounded-md border border-border p-4">
+                    {selectedProvider.serviceProviderData.buisnessName && (
+                      <div className="mb-2">
+                        <span className="font-medium">Business Name:</span>{" "}
+                        {selectedProvider.serviceProviderData.buisnessName}
+                      </div>
+                    )}
+                    {selectedProvider.serviceProviderData.category && (
+                      <div className="mb-2">
+                        <span className="font-medium">Category:</span> {selectedProvider.serviceProviderData.category}
+                      </div>
+                    )}
+                    {selectedProvider.serviceProviderData.pricingModel && (
+                      <div className="mb-2">
+                        <span className="font-medium">Pricing Model:</span>{" "}
+                        {selectedProvider.serviceProviderData.pricingModel}
+                      </div>
+                    )}
+                    {selectedProvider.serviceProviderData.serviceDescription && (
+                      <div className="mb-2">
+                        <span className="font-medium">Service Description:</span>{" "}
+                        {selectedProvider.serviceProviderData.serviceDescription}
+                      </div>
+                    )}
+                    {selectedProvider.serviceProviderData.websiteUrl && (
+                      <div className="mb-2">
+                        <span className="font-medium">Website:</span> {selectedProvider.serviceProviderData.websiteUrl}
+                      </div>
+                    )}
+                    {!selectedProvider.serviceProviderData.buisnessName &&
+                      !selectedProvider.serviceProviderData.category &&
+                      !selectedProvider.serviceProviderData.serviceDescription && (
+                        <p className="text-muted-foreground">No detailed service information available.</p>
+                      )}
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-end gap-2 mt-4">
-                {selectedProvider.status === "active" ? (
-                  <Button
-                    variant="outline"
-                    className="border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
-                    onClick={() => handleBlockUnblock(selectedProvider)}
-                  >
-                    <Ban className="mr-2 h-4 w-4" />
-                    Block Provider
-                  </Button>
-                ) : (
+                {provider.status?.toLowerCase() === "suspended" || provider.status?.toLowerCase() === "blocked" ? (
                   <Button
                     variant="outline"
                     className="border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
@@ -230,6 +326,15 @@ export function ServiceProvidersManagement() {
                   >
                     <CheckCircle className="mr-2 h-4 w-4" />
                     Unblock Provider
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
+                    onClick={() => handleBlockUnblock(selectedProvider)}
+                  >
+                    <Ban className="mr-2 h-4 w-4" />
+                    Block Provider
                   </Button>
                 )}
               </div>
@@ -240,4 +345,3 @@ export function ServiceProvidersManagement() {
     </>
   )
 }
-

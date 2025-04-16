@@ -14,6 +14,7 @@ type EarlyAccessEntry = {
   name: string;
   email: string;
   twitter: string;
+  telegram:string;
   role: "Founder" | "Investor";
   walletAddress: string;
   createdAt: string;
@@ -142,6 +143,7 @@ export function EarlyAccessEntries() {
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>X (Twitter)</TableHead>
+              <TableHead>Telegram</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Wallet Address</TableHead>
               <TableHead>Status</TableHead>
@@ -161,6 +163,16 @@ export function EarlyAccessEntries() {
                     className="text-primary hover:underline"
                   >
                     @{entry.twitter}
+                  </a>
+                </TableCell>
+                <TableCell>
+                  <a
+                    href={`https://telegram.org/${entry.telegram}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    @{entry.telegram}
                   </a>
                 </TableCell>
                 <TableCell>{entry.role}</TableCell>

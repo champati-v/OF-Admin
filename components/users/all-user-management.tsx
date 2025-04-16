@@ -286,7 +286,7 @@ export function AllUsersManagement() {
                               : "bg-green-500 text-white"
                     }`}
                   >
-                    {statusLoading ? "loading..." : user.status || "verified"}
+                    {statusLoading ? "loading..." : user.status}
                   </div>
                 </TableCell>
                 <TableCell>
