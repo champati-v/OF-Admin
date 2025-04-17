@@ -308,9 +308,9 @@ export function AllUsersManagement() {
 
                       {/* Block/Unblock Button */}
                       <DropdownMenuItem
-                        onClick={() => {
-                          user.status === "blocked" ? handleUnblock(user) : handleBlock(user)
-                        }}
+                        // onClick={() => {
+                        //   user.status === "blocked" ? handleUnblock(user) : handleBlock(user)
+                        // }}
                         className={user.status === "blocked" ? "text-green-500" : "text-red-500"}
                       >
                         {user.status === "blocked" ? (
@@ -328,9 +328,9 @@ export function AllUsersManagement() {
 
                       {/* Verify/Unverify Button */}
                       <DropdownMenuItem
-                        onClick={() => {
-                          user.status === "verified" ? handleUnverify(user) : handleVerify(user)
-                        }}
+                        // onClick={() => {
+                        //   user.status === "verified" ? handleUnverify(user) : handleVerify(user)
+                        // }}
                         className={
                             user.status === "verified"
                               ? "text-green-500"
@@ -354,9 +354,9 @@ export function AllUsersManagement() {
 
                       {/* Suspend/Unsuspend Button */}
                       <DropdownMenuItem
-                        onClick={() => {
-                          user.status === "suspended" ? handleUnsuspend(user) : handleSuspend(user)
-                        }}
+                        // onClick={() => {
+                        //   user.status === "suspended" ? handleUnsuspend(user) : handleSuspend(user)
+                        // }}
                         className={user.status === "suspended" ? "text-green-500" : "text-yellow-500"}
                       >
                         {user.status === "suspended" ? (

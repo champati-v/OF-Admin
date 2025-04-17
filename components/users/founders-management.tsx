@@ -278,11 +278,11 @@ export function FoundersManagement() {
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        onClick={() => {
-                          founder.status === "verified"
-                            ? handleBlock(founder)
-                            : handleVerify(founder);
-                        }}
+                        // onClick={() => {
+                        //   founder.status === "verified"
+                        //     ? handleBlock(founder)
+                        //     : handleVerify(founder);
+                        // }}
                         className={
                           founder.status === "Unverified"
                             ? "text-green-500"

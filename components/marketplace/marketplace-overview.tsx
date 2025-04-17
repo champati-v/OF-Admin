@@ -49,6 +49,7 @@ export function MarketplaceOverview() {
         setError(null)
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to fetch analytics data")
+        console.log("Error fetching analytics:", error)
       } finally {
         setIsLoading(false)
       }
