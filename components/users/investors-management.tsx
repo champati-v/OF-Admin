@@ -38,8 +38,8 @@ type Investor = {
     skills: string[]
     socialLinks: Record<string, string>
     completedStatus: string
-    watchList: any[]
-    recentActivity: any[]
+    watchList: string[]
+    recentActivity: string[]
     experienceLevel?: string
   }
 }
@@ -59,6 +59,7 @@ type FormattedInvestor = {
   bio?: string
   skills?: string[]
   socialLinks?: Record<string, string>
+  portfolioValue?: number,
 }
 
 export function InvestorsManagement() {
@@ -144,7 +145,7 @@ export function InvestorsManagement() {
         displayStatus = "unverified"
       }
   
-      const prevStatus = investor.status // for rollback
+      // const prevStatus = investor.status // for rollback
   
       // Optimistic UI update
       setInvestors((prevInvestors) =>

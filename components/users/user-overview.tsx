@@ -34,6 +34,7 @@ export function UsersOverview() {
           setFounders(data.profiles || [])
         } catch (err) {
           setError((err as Error).message)
+          console.log(error)
         } finally {
           setLoading(false)
         }

@@ -29,6 +29,7 @@ import Link from "@tiptap/extension-link"
 import { EmojiPicker } from "./emoji-picker"
 import { use } from "react"
 import HardBreak from "@tiptap/extension-hard-break"
+import { useRouter } from "next/navigation"
 
 // Predefined categories
 const BLOG_CATEGORIES = [
@@ -62,6 +63,7 @@ export default function BlogEditor({ params }: { params: Promise<{ id: string }>
   const [isEditMode, setIsEditMode] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const { id } = use(params)
+  const router = useRouter()
 
   // Store original categories to track changes
   const originalCategoriesRef = useRef<string[]>([])
@@ -115,7 +117,7 @@ export default function BlogEditor({ params }: { params: Promise<{ id: string }>
       },
     },
     onUpdate: ({ editor }) => {
-      // This is just to ensure the editor updates properly
+      console.log(editor)
     },
   })
 
@@ -340,12 +342,12 @@ export default function BlogEditor({ params }: { params: Promise<{ id: string }>
     <div className="container mx-auto py-8 max-w-4xl">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold mb-6">{isEditMode ? "Edit Blog Post" : "Create New Blog Post"}</h1>
-        <a
-          href="/admin/dashboard/blog"
-          className="flex items-center gap-2 bg-black text-white hover:bg-black/80 transition-all duration-200 rounded-md px-2 py-1 "
+        <Button
+          onClick={() => router.push("/admin/dashboard/blog")}
+          className="flex items-center gap-2 bg-black text-white hover:bg-black/80 transition-all duration-200 rounded-md px-2 py-1 cursor-pointer"
         >
           <ArrowLeft className="h-5 w-5" /> Back
-        </a>
+        </Button>
       </div>
 
       <div className="space-y-4 mb-4">

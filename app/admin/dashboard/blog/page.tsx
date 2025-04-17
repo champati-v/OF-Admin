@@ -31,8 +31,9 @@ interface Blog {
   description: string
   content: string
   categories: string[]
-  headerImage?: string
-  file_url?: string
+  headerImage?: {
+    file_url: string
+  }
   createdAt: string
   updatedAt: string
   isTrending?: boolean
@@ -125,20 +126,20 @@ export default function BlogManagement() {
   }
 
   // Open status update dialog
-  const openStatusDialog = (blog: Blog) => {
-    setBlogToUpdateStatus(blog)
+  // const openStatusDialog = (blog: Blog) => {
+  //   setBlogToUpdateStatus(blog)
 
-    // Set initial status based on blog properties
-    if (blog.isTrending) {
-      setBlogStatus("trending")
-    } else if (blog.isFeatured) {
-      setBlogStatus("featured")
-    } else {
-      setBlogStatus("none")
-    }
+  //   // Set initial status based on blog properties
+  //   if (blog.isTrending) {
+  //     setBlogStatus("trending")
+  //   } else if (blog.isFeatured) {
+  //     setBlogStatus("featured")
+  //   } else {
+  //     setBlogStatus("none")
+  //   }
 
-    setStatusDialogOpen(true)
-  }
+  //   setStatusDialogOpen(true)
+  // }
 
   // Handle updating blog status (trending/featured)
   const handleUpdateStatus = async () => {

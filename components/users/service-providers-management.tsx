@@ -244,7 +244,7 @@ export function ServiceProvidersManagement() {
                 <div className="col-span-3">
                   <Badge
                     variant={
-                      provider.status?.toLowerCase() === "suspended" || provider.status?.toLowerCase() === "blocked"
+                      selectedProvider.status?.toLowerCase() === "suspended" || selectedProvider.status?.toLowerCase() === "blocked"
                         ? "destructive"
                         : "outline"
                     }
@@ -318,7 +318,7 @@ export function ServiceProvidersManagement() {
               )}
 
               <div className="flex justify-end gap-2 mt-4">
-                {provider.status?.toLowerCase() === "suspended" || provider.status?.toLowerCase() === "blocked" ? (
+                {selectedProvider.status?.toLowerCase() === "suspended" || selectedProvider.status?.toLowerCase() === "blocked" ? (
                   <Button
                     variant="outline"
                     className="border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"

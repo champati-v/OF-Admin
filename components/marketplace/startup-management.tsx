@@ -32,6 +32,9 @@ type Startup = {
   verification: string
   featuredStatus: string
   campaign: string
+  startupName: string
+  hasCampaign: boolean
+  teamSize: number
 }
 
 // Mock data for startups
@@ -165,9 +168,10 @@ export function StartupManagement() {
         } catch (err) {
           const errorMessage = (err as Error).message;
           setError(errorMessage);
-          console.error("Error fetching startups:", errorMessage);
+          console.error("Error fetching startups:", errorMessage, error);
         } finally {
           setLoading(false);
+          console.log(loading)
         }
       };
       fetchFounders();

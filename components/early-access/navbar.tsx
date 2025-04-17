@@ -2,8 +2,6 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { Button } from "../ui/button"
-import { ArrowLeftSquare } from "lucide-react"
 
 export function Navbar() {
 
@@ -59,12 +57,12 @@ export function Navbar() {
             </Link> */}
           </nav>
         </div>
-        <div className="flex items-center gap-4">
-          <a href="/admin/dashboard" className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-gray-300 transition-colors">
+        {/* <div className="flex items-center gap-4">
+          <Button onClick={() => router.push('admin/dashboard')} className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-gray-300 transition-colors">
             <ArrowLeftSquare className="h-5 w-5" />
             <span>Back</span>
-          </a>
-        </div>
+          </Button>
+        </div> */}
       </div>
     </header>
   )
