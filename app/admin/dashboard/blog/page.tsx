@@ -286,9 +286,9 @@ export default function BlogManagement() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Options</DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => openStatusDialog(blog)}>
+                          {/* <DropdownMenuItem onClick={() => openStatusDialog(blog)}>
                             Set Status (Trending/Featured)
-                          </DropdownMenuItem>
+                          </DropdownMenuItem> */}
                           <DropdownMenuItem onClick={() => handleEditBlog(blog._id)}>Edit Blog</DropdownMenuItem>
                           <DropdownMenuItem className="text-red-600" onClick={() => openDeleteDialog(blog._id)}>
                             Delete Blog
