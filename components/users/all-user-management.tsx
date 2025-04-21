@@ -16,6 +16,7 @@ import { MoreHorizontal, Eye, Ban, CheckCircle, Pause } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { UserCounts } from "./user-counts"
 import { toast } from "sonner"
+import axios from "axios"
 
 // Define the User type
 type User = {
@@ -47,23 +48,16 @@ export function AllUsersManagement() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        setLoading(true)
         const response = await fetch(API_URL, {
           method: "GET",
           headers: {
             user_id: "62684",
           },
         })
-        if (!response.ok) throw new Error("Failed to fetch data")
+
         const data = await response.json()
+        setUsers(data.profiles || [])
 
-        // Add status field if not present
-        const processedUsers = data.profiles.map((user: User) => ({
-          ...user,
-          status: user.status || "verified", // Default to verified if status is not provided
-        }))
-
-        setUsers(processedUsers || [])
       } catch (err) {
         setError((err as Error).message)
       } finally {
@@ -90,12 +84,6 @@ export function AllUsersManagement() {
 
       if (response.status === 200) {
         toast("User blocked successfully")
-         // Update the user's status in the local state
-         setUsers((prevUsers) => prevUsers.map((u) => (u.user_id === user.user_id ? { ...u, status: "blocked" } : u)))
-         // Update the selected user if it's the one being modified
-         if (selectedUser && selectedUser.user_id === user.user_id) {
-           setSelectedUser({ ...selectedUser, status: "blocked" })
-         }
       }
     } catch (error) {
       console.error("Error blocking user:", error)
@@ -117,12 +105,6 @@ export function AllUsersManagement() {
 
       if (response.status === 200) {
         toast("User unblocked successfully")
-        // Update the user's status in the local state
-        setUsers((prevUsers) => prevUsers.map((u) => (u.user_id === user.user_id ? { ...u, status: "verified" } : u)))
-        // Update the selected user if it's the one being modified
-        if (selectedUser && selectedUser.user_id === user.user_id) {
-          setSelectedUser({ ...selectedUser, status: "verified" })
-        }
       }
     } catch (error) {
       console.error("Error unblocking user:", error)
@@ -135,21 +117,20 @@ export function AllUsersManagement() {
   const handleVerify = async (user: User) => {
     try {
       setStatusLoading(true)
-      const response = await fetch(`https://onlyfounders.azurewebsites.net/api/admin/verify/${user.user_id}`, {
-        method: "PUT",
-        headers: {
-          user_id: "62684",
+      const response = await axios.put(
+        `https://onlyfounders.azurewebsites.net/api/admin/change-status/${user.user_id}`,
+        {
+          status: "verified",
         },
-      })
+        {
+          headers: {
+            user_id: "62684",
+          },
+        }
+      );
 
       if (response.status === 200) {
         toast("User verified successfully")
-        // Update the user's status in the local state
-        setUsers((prevUsers) => prevUsers.map((u) => (u.user_id === user.user_id ? { ...u, status: "verified" } : u)))
-        // Update the selected user if it's the one being modified
-        if (selectedUser && selectedUser.user_id === user.user_id) {
-          setSelectedUser({ ...selectedUser, status: "verified" })
-        }
       }
     } catch (error) {
       console.error("Error verifying user:", error)
@@ -171,12 +152,6 @@ export function AllUsersManagement() {
 
       if (response.status === 200) {
         toast("User unverified successfully")
-        // Update the user's status in the local state
-        setUsers((prevUsers) => prevUsers.map((u) => (u.user_id === user.user_id ? { ...u, status: "Unverified" } : u)))
-        // Update the selected user if it's the one being modified
-        if (selectedUser && selectedUser.user_id === user.user_id) {
-          setSelectedUser({ ...selectedUser, status: "Unverified" })
-        }
       }
     } catch (error) {
       console.error("Error unverifying user:", error)
@@ -198,12 +173,6 @@ export function AllUsersManagement() {
 
       if (response.status === 200) {
         toast("User suspended successfully")
-        // Update the user's status in the local state
-        setUsers((prevUsers) => prevUsers.map((u) => (u.user_id === user.user_id ? { ...u, status: "suspended" } : u)))
-        // Update the selected user if it's the one being modified
-        if (selectedUser && selectedUser.user_id === user.user_id) {
-          setSelectedUser({ ...selectedUser, status: "suspended" })
-        }
       }
     } catch (error) {
       console.error("Error suspending user:", error)
@@ -225,12 +194,6 @@ export function AllUsersManagement() {
 
       if (response.status === 200) {
         toast("User unsuspended successfully")
-        // Update the user's status in the local state
-        setUsers((prevUsers) => prevUsers.map((u) => (u.user_id === user.user_id ? { ...u, status: "verified" } : u)))
-        // Update the selected user if it's the one being modified
-        if (selectedUser && selectedUser.user_id === user.user_id) {
-          setSelectedUser({ ...selectedUser, status: "verified" })
-        }
       }
     } catch (error) {
       console.error("Error unsuspending user:", error)
@@ -306,71 +269,30 @@ export function AllUsersManagement() {
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
 
-                      {/* Block/Unblock Button */}
                       <DropdownMenuItem
-                        // onClick={() => {
-                        //   user.status === "blocked" ? handleUnblock(user) : handleBlock(user)
-                        // }}
-                        className={user.status === "blocked" ? "text-green-500" : "text-red-500"}
+                        className="text-green-500"
+                        onClick={() => handleVerify(user)}
                       >
-                        {user.status === "blocked" ? (
-                          <>
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            Unblock
-                          </>
-                        ) : (
-                          <>
-                            <Ban className="mr-2 h-4 w-4" />
-                            Block
-                          </>
-                        )}
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Verify User
                       </DropdownMenuItem>
 
-                      {/* Verify/Unverify Button */}
                       <DropdownMenuItem
-                        // onClick={() => {
-                        //   user.status === "verified" ? handleUnverify(user) : handleVerify(user)
-                        // }}
-                        className={
-                            user.status === "verified"
-                              ? "text-green-500"
-                              : user.status === "Unverified"
-                                ? "text-gray-500"
-                                : "text-green-500"
-                          }
+                        className="text-red-500"
+                        onClick={() => handleBlock(user)}
                       >
-                        {user.status === "verified" ? (
-                          <>
-                            <Ban className="mr-2 h-4 w-4" />
-                            Unverify
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            Verify
-                          </>
-                        )}
+                        <Ban className="mr-2 h-4 w-4" />
+                        Block User
                       </DropdownMenuItem>
 
-                      {/* Suspend/Unsuspend Button */}
                       <DropdownMenuItem
-                        // onClick={() => {
-                        //   user.status === "suspended" ? handleUnsuspend(user) : handleSuspend(user)
-                        // }}
-                        className={user.status === "suspended" ? "text-green-500" : "text-yellow-500"}
+                        className="text-orange-500"
+                        onClick={() => handleSuspend(user)}
                       >
-                        {user.status === "suspended" ? (
-                          <>
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            Unsuspend
-                          </>
-                        ) : (
-                          <>
-                            <Pause className="mr-2 h-4 w-4" />
-                            Suspend
-                          </>
-                        )}
+                        <Pause className="mr-2 h-4 w-4" />
+                        Suspend User
                       </DropdownMenuItem>
+
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -431,74 +353,6 @@ export function AllUsersManagement() {
                   >
                     {selectedUser.status || "verified"}
                   </Badge>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 mt-4">
-                {/* Action buttons */}
-                <div className="flex flex-wrap gap-2">
-                  {selectedUser.status === "blocked" ? (
-                    <Button
-                      variant="outline"
-                      className="border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
-                      onClick={() => handleUnblock(selectedUser)}
-                    >
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Unblock User
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      className="border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
-                      onClick={() => handleBlock(selectedUser)}
-                    >
-                      <Ban className="mr-2 h-4 w-4" />
-                      Block User
-                    </Button>
-                  )}
-
-                  {selectedUser.status === "verified" || !selectedUser.status ? (
-                    <Button
-                      variant="outline"
-                      className="border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
-                      onClick={() => handleUnverify(selectedUser)}
-                    >
-                      <Ban className="mr-2 h-4 w-4" />
-                      Unverify User
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      className={
-                        selectedUser.status === "Unverified"
-                          ? "border-gray-500 text-gray-500 hover:bg-gray-50 hover:text-gray-600"
-                          : "border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
-                      }
-                      onClick={() => handleVerify(selectedUser)}
-                    >
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Verify User
-                    </Button>
-                  )}
-
-                  {selectedUser.status === "suspended" ? (
-                    <Button
-                      variant="outline"
-                      className="border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
-                      onClick={() => handleUnsuspend(selectedUser)}
-                    >
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Unsuspend User
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="outline"
-                       className="border-yellow-500 text-yellow-500 hover:bg-yellow-50 hover:text-yellow-600"
-                      onClick={() => handleSuspend(selectedUser)}
-                    >
-                      <Pause className="mr-2 h-4 w-4" />
-                      Suspend User
-                    </Button>
-                  )}
                 </div>
               </div>
             </div>

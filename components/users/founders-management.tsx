@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, Eye, Ban, CheckCircle, Pause } from "lucide-react";
+import { MoreHorizontal, Eye, Ban, CheckCircle, Pause, Target } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { UserCounts } from "./user-counts";
 import { toast } from "sonner";
+import axios from "axios";
 
 // Define the Founder type
 type Founder = {
@@ -45,20 +46,26 @@ type Founder = {
   };
   totalCampaigns?: number;
   totalRaised?: number;
+  founderData: {
+    socialLinks: {
+      twitter?: string;
+    };
+  };
+  startup_id: string;
 };
 
 export function FoundersManagement() {
   const [selectedFounder, setSelectedFounder] = useState<Founder | null>(null);
   const [showProfile, setShowProfile] = useState(false);
-  const [founders, setFounders] = useState<Founder[]>([]);
+  const [founder, setFounder] = useState<Founder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
   // Calculate counts
 
-  const totalFounders = founders.length;
-  const activeFounders = founders.filter((f) => f.status === "verified").length;
-  const blockedFounders = founders.filter(
+  const totalFounders = founder.length;
+  const activeFounders = founder.filter((f) => f.status === "verified").length;
+  const blockedFounders = founder.filter(
     (f) => f.status === "Unverified"
   ).length;
 
@@ -74,9 +81,8 @@ export function FoundersManagement() {
             user_id: "62684",
           },
         });
-        if (!response.ok) throw new Error("Failed to fetch data");
         const data = await response.json();
-        setFounders(data.profiles || []);
+        setFounder(data.profiles || []);
       } catch (err) {
         setError((err as Error).message);
       } finally {
@@ -128,10 +134,14 @@ export function FoundersManagement() {
   const handleVerify = async (founder: Founder) => {
     try {
       setStatusLoading(true);
-      const response = await fetch(
-        `https://onlyfounders.azurewebsites.net/api/admin/verify/${founder.user_id}`,
+      console.log("Verifying founder:", founder.user_id);
+
+      const response = await axios.put(
+        `https://onlyfounders.azurewebsites.net/api/admin/change-status/${founder.user_id}`,
         {
-          method: "PUT",
+          status: "verified",
+        },
+        {
           headers: {
             user_id: "62684",
           },
@@ -142,7 +152,7 @@ export function FoundersManagement() {
         toast("Founder Verified successfully!");
       }
     } catch (error) {
-      console.error("Error blocking founder:", error);
+      console.error("Error verifying founder:", error);
     } finally {
       setStatusLoading(false);
     }
@@ -182,11 +192,10 @@ export function FoundersManagement() {
     console.log(`Viewing campaign for ${founder.username}`);
   };
 
-  const handleViewDashboard = (founder: Founder) => {
-    // In a real implementation, this would navigate to the founder's dashboard
-    console.log(`Viewing dashboard for ${founder.username}`);
-  };
-
+  // const handleViewDocs = (founder: Founder) => {
+  //   setSelectedFounder(founder);
+  //   setShowDocs(true);
+  // };
 
   return (
     <>
@@ -211,7 +220,7 @@ export function FoundersManagement() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {founders.map((founder) => (
+            {founder.map((founder) => (
               <TableRow key={founder._id} className="border-t border-border">
                 <TableCell className="font-medium">
                   {founder.username}
@@ -252,71 +261,49 @@ export function FoundersManagement() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => handleViewProfile(founder)}
-                      >
-                        <Eye className="mr-2 h-4 w-4" />
-                        View Profile
+                      <DropdownMenuItem onClick={() => handleViewProfile(founder)}>
+                          <Eye className="mr-2 h-4 w-4" />
+                          View Profile
                       </DropdownMenuItem>
-                      <DropdownMenuItem
+                      {/* <DropdownMenuItem
                         onClick={() => handleViewStartup(founder)}
                       >
                         <Eye className="mr-2 h-4 w-4" />
                         View Startup
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
+                      </DropdownMenuItem> */}
+                      {/* <DropdownMenuItem
                         onClick={() => handleViewCampaign(founder)}
                       >
                         <Eye className="mr-2 h-4 w-4" />
                         View Campaign
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleViewDashboard(founder)}
-                      >
-                        <Eye className="mr-2 h-4 w-4" />
-                        View Dashboard
-                      </DropdownMenuItem>
+                      </DropdownMenuItem> */}
                       <DropdownMenuSeparator />
+
                       <DropdownMenuItem
-                        // onClick={() => {
-                        //   founder.status === "verified"
-                        //     ? handleBlock(founder)
-                        //     : handleVerify(founder);
-                        // }}
-                        className={
-                          founder.status === "Unverified"
-                            ? "text-green-500"
-                            : "text-red-500"
-                        }
+                        className="text-green-500"
+                        onClick={() => handleVerify(founder)}
                       >
-                        {founder.status === "verified" ? (
-                          <>
-                            <Ban className="mr-2 h-4 w-4" />
-                            Block
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            Verify
-                          </>
-                        )}
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Verify Founder
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator />
+
                       <DropdownMenuItem
+                        className="text-red-500"
+                        onClick={() => handleBlock(founder)}
+                      >
+                        <Ban className="mr-2 h-4 w-4" />
+                        Block Founder
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        className="text-orange-500"
                         onClick={() => handleSuspend(founder)}
-                        className={
-                          founder.status === "verified" ? "text-red-500" : ""
-                        }
                       >
-                        {founder.status === "verified" ? (
-                          <>
-                            <Pause className="mr-2 h-4 w-4" />
-                            Suspend
-                          </>
-                        ) : (
-                          ""
-                        )}
+                        <Pause className="mr-2 h-4 w-4" />
+                        Suspend Founder
                       </DropdownMenuItem>
+
+                      <DropdownMenuSeparator />
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -333,7 +320,7 @@ export function FoundersManagement() {
             <DialogHeader>
               <DialogTitle>Founder Profile</DialogTitle>
               <DialogDescription>
-                Detailed information about {selectedFounder.username}
+                Detailed Documentation for {selectedFounder.username}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -342,8 +329,16 @@ export function FoundersManagement() {
                 <div className="col-span-3">{selectedFounder.username}</div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
+                <div className="font-medium">Title: </div>
+                <div className="col-span-3">{selectedFounder.professionalTitle}</div>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
                 <div className="font-medium">Email:</div>
-                <div className="col-span-3">{selectedFounder.email}</div>
+                <div className="col-span-3"><a href={`mailto:${selectedFounder.email}`} className="text-blue-600" target="_blank">{selectedFounder.email}</a></div>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <div className="font-medium">Twitter: </div>
+                <div className="col-span-3"><a className="text-blue-600" href={selectedFounder.founderData.socialLinks.Twitter} target="_blank">{selectedFounder.founderData.socialLinks.Twitter}</a></div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <div className="font-medium">Joined:</div>
@@ -351,7 +346,7 @@ export function FoundersManagement() {
                   {formatDate(selectedFounder.createdAt)}
                 </div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
+              {/* <div className="grid grid-cols-4 items-center gap-4">
                 <div className="font-medium">Total Campaigns:</div>
                 <div className="col-span-3">
                   {selectedFounder.totalCampaigns ?? "-"}
@@ -362,7 +357,7 @@ export function FoundersManagement() {
                 <div className="col-span-3">
                   {selectedFounder.totalRaised ?? "-"}
                 </div>
-              </div>
+              </div> */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <div className="font-medium">Status:</div>
                 <div className="col-span-3">
@@ -378,39 +373,11 @@ export function FoundersManagement() {
                   </Badge>
                 </div>
               </div>
-              <div className="flex justify-end gap-2 mt-4">
-                {selectedFounder.status === "verified" ? (
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      className="border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
-                      onClick={() => handleBlock(selectedFounder)}
-                    >
-                      <Ban className="mr-2 h-4 w-4" />
-                      Block Founder
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      className="border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
-                      onClick={() => handleSuspend(selectedFounder)}
-                    >
-                      <Pause className="mr-2 h-4 w-4" />
-                      Suspend Founder
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    variant="outline"
-                    className="border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
-                    onClick={() => handleVerify(selectedFounder)}
-                  >
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Verify Founder
-                  </Button>
-                )}
-              </div>
             </div>
+            <div className={`${selectedFounder.startup_id == null? "hidden" : "block"}`}>
+              <a href={`https://www.onlyfounders.xyz/marketplace/project/${selectedFounder.startup_id}`} target="_blank" className="text-white px-2 py-1 rounded-md bg-blue-500">View Startup</a>
+            </div>
+
           </DialogContent>
         </Dialog>
       )}
