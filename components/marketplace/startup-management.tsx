@@ -35,7 +35,10 @@ import {
   MessageSquare,
   BookOpen,
   Send,
-  FileText
+  FileText,
+  Key,
+  Copy,
+  ArrowUpRightSquare
 } from "lucide-react";
 import {
   Dialog,
@@ -45,6 +48,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import axios from "axios";
+import {CopyToClipboard} from 'react-copy-to-clipboard'
+import { toast } from "sonner";
 
 // Define the Startup type
 type Startup = {
@@ -701,7 +706,12 @@ export function StartupManagement() {
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4"></div>
+              <div className="flex items-center gap-2 justify-center text-white bg-blue-500 rounded-sm px-2 py-1">
+                <a href={`https://www.onlyfounders.xyz/marketplace/project/${selectedStartup._id}`} target="_blank" >
+                  View Startup 
+                </a>
+                <ArrowUpRightSquare className="w-5 h-5"/>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
@@ -738,8 +748,15 @@ export function StartupManagement() {
       {/* Pitch Deck Section */}
       {docs? (
         <>        
-        <div className="flex items-center gap-2">
-          <p className="text-lg font-semibold">Pitch Deck Url</p>
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <p className="text-lg font-semibold">Pitch Deck Url</p>
+            <button className="cursor-pointer" onClick={() => toast("Pitch Deck URL copied to clipboard") }>
+              <CopyToClipboard text={docs.pitchDeck_Url}>
+                  <Copy className="w-5 h-5 hover:text-gray-600" />
+              </CopyToClipboard>
+            </button>
+          </div>
           <a
             href={docs.pitchDeck_Url}
             target="_blank"
@@ -750,13 +767,32 @@ export function StartupManagement() {
           </a>
         </div>
         
-        <div className="flex items-center gap-2">
-          <p className="text-lg font-semibold">Pitch Deck Text</p>
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <p className="text-lg font-semibold">Pitch Deck Text</p>
+            <button className="cursor-pointer" onClick={() => toast("Pitch Deck Text Copied to clipboard") }>
+              <CopyToClipboard text={docs.pitchDeckText}>
+                  <Copy className="w-5 h-5 hover:text-gray-600" />
+              </CopyToClipboard>
+            </button>
+          </div>
           <p>{docs.pitchDeckText}</p>
         </div>
         
         <div className="flex items-center gap-2">
-          <p className="text-lg font-semibold">Pitch demo Video Url</p>
+          <p className="text-lg font-semibold">Pitch Deck File</p>
+          <a href={docs.pitchDeck?.file_url} target="_blank" className="bg-blue-500 px-2 py-0.5 text-white rounded-md">Download File</a>
+        </div>
+
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2"> 
+            <p className="text-lg font-semibold">Pitch demo Video Url</p>
+            <button className="cursor-pointer" onClick={() => toast("Pitch demo Video URL Copied to clipboard") }>
+              <CopyToClipboard text={docs.pitchDemoVideo_Url}>
+                  <Copy className="w-5 h-5 hover:text-gray-600" />
+              </CopyToClipboard>
+            </button>
+          </div>
           <a
             href={docs.pitchDemoVideo_Url}
             target="_blank"
@@ -767,8 +803,15 @@ export function StartupManagement() {
           </a>
         </div>
 
-        <div className="flex items-center gap-2">
-          <p className="text-lg font-semibold">Whitepaper Url</p>
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <p className="text-lg font-semibold">Whitepaper Url</p>
+            <button className="cursor-pointer" onClick={() => toast("Whitepaper URL Copied to clipboard") }>
+              <CopyToClipboard text={docs.whitepaper_Url}>
+                  <Copy className="w-5 h-5 hover:text-gray-600" />
+              </CopyToClipboard>
+            </button>
+          </div>
           <a
             href={docs.whitepaper_Url}
             target="_blank"

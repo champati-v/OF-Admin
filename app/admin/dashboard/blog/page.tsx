@@ -23,7 +23,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { MoreVertical, Pencil, Plus, Trash } from "lucide-react"
+import { ArrowLeft, MoreVertical, Pencil, Plus, Trash } from "lucide-react"
 
 interface Blog {
   _id: string
@@ -194,9 +194,14 @@ export default function BlogManagement() {
     <div className="container mx-auto py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Blog Management</h1>
+        <div className="flex items-center gap-4">
+        <Button className="cursor-pointer" onClick={() => router.push('/admin/dashboard')}>
+          <ArrowLeft/> back
+        </Button>
         <Button onClick={handleCreateBlog} className="cursor-pointer">
           <Plus className="mr-2 h-4 w-4" /> Create New Blog
         </Button>
+        </div>
       </div>
 
       {isLoading ? (

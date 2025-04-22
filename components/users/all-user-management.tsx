@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { UserCounts } from "./user-counts"
 import { toast } from "sonner"
 import axios from "axios"
+import { useRouter } from "next/navigation"
 
 // Define the User type
 type User = {
@@ -37,6 +38,7 @@ export function AllUsersManagement() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [statusLoading, setStatusLoading] = useState(false)
+  const router = useRouter()
 
   // Calculate counts
   const totalUsers = users.length

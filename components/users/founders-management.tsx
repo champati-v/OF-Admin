@@ -37,6 +37,7 @@ type Founder = {
   user_id: string;
   username: string;
   email?: string;
+  bio: string;
   createdAt: string;
   status: "verified" | "Unverified" | "blocked" | "suspended";
   location?: string;
@@ -48,7 +49,7 @@ type Founder = {
   totalRaised?: number;
   founderData: {
     socialLinks: {
-      twitter?: string;
+      Twitter?: string;
     };
   };
   startup_id: string;
@@ -338,7 +339,7 @@ export function FoundersManagement() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <div className="font-medium">Twitter: </div>
-                <div className="col-span-3"><a className="text-blue-600" href={selectedFounder.founderData.socialLinks.Twitter} target="_blank">{selectedFounder.founderData.socialLinks.Twitter}</a></div>
+                <div className="col-span-3"><a className="text-blue-600" href={selectedFounder.founderData?.socialLinks?.Twitter} target="_blank">{selectedFounder.founderData?.socialLinks?.Twitter}</a></div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <div className="font-medium">Joined:</div>
@@ -346,13 +347,13 @@ export function FoundersManagement() {
                   {formatDate(selectedFounder.createdAt)}
                 </div>
               </div>
-              {/* <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Total Campaigns:</div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <div className="font-medium">Bio:</div>
                 <div className="col-span-3">
-                  {selectedFounder.totalCampaigns ?? "-"}
+                  {selectedFounder.bio ?? "-"}
                 </div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
+              {/* <div className="grid grid-cols-4 items-center gap-4">
                 <div className="font-medium">Total Raised:</div>
                 <div className="col-span-3">
                   {selectedFounder.totalRaised ?? "-"}

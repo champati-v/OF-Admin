@@ -280,7 +280,7 @@ export function ServiceProvidersManagement() {
       {/* Service Provider Profile Dialog */}
       {selectedProvider && (
         <Dialog open={showProfile} onOpenChange={setShowProfile}>
-          <DialogContent className="sm:max-w-[600px] border border-border">
+          <DialogContent className="sm:max-w-screen-sm max-h-screen overflow-y-auto border border-border">
             <DialogHeader>
               <DialogTitle>Service Provider Profile</DialogTitle>
               <DialogDescription>Profile details for {selectedProvider.username}</DialogDescription>
