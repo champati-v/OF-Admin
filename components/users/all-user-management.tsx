@@ -42,8 +42,11 @@ export function AllUsersManagement() {
 
   // Calculate counts
   const totalUsers = users.length
-  const activeUsers = users.filter((u) => u.status === "verified" || !u.status).length
-  const blockedUsers = users.filter((u) => u.status === "blocked" || u.status === "Unverified").length
+  const verifiedUsers = users.filter((u) => u.status === "verified" ).length
+  const blockedUsers = users.filter((u) => u.status === "blocked").length
+  const suspendedUsers = users.filter((u) => u.status === "suspended").length
+  const unverifiedUsers = users.filter((u) => u.status === "Unverified").length
+
 
   const API_URL = "https://onlyfounders.azurewebsites.net/api/admin/get-all-profiles"
 
@@ -210,7 +213,14 @@ export function AllUsersManagement() {
 
   return (
     <>
-      <UserCounts total={totalUsers} active={activeUsers} blocked={blockedUsers} userType="Users" />
+      <UserCounts 
+        total={totalUsers} 
+        verified={verifiedUsers} 
+        blocked={blockedUsers} 
+        suspended={suspendedUsers}
+        unverified={unverifiedUsers}
+        userType="Users" 
+      />
 
       <div className="rounded-md border border-border">
         <Table>

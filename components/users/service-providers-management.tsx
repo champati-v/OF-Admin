@@ -161,12 +161,10 @@ export function ServiceProvidersManagement() {
 
   // Calculate counts
   const totalProviders = serviceProviders.length
-  const activeProviders = serviceProviders.filter(
-    (p) => p.status?.toLowerCase() === "active" || p.status === "Verified",
-  ).length
-  const blockedProviders = serviceProviders.filter(
-    (p) => p.status?.toLowerCase() === "suspended" || p.status?.toLowerCase() === "blocked",
-  ).length
+  const verifiedProviders = serviceProviders.filter((p) => p.status === "Verified").length
+  const blockedProviders = serviceProviders.filter((p) => p.status?.toLowerCase() === "blocked").length
+  const suspendedProviders = serviceProviders.filter((p) => p.status?.toLowerCase() === "suspended").length
+  const unverifiedProviders = serviceProviders.filter((p) => p.status?.toLowerCase() === "unverified").length
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -198,8 +196,10 @@ export function ServiceProvidersManagement() {
     <>
       <UserCounts
         total={totalProviders}
-        active={activeProviders}
+        verified={verifiedProviders}
         blocked={blockedProviders}
+        suspended={suspendedProviders}
+        unverified={unverifiedProviders}
         userType="Service Providers"
       />
 

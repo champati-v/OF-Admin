@@ -65,10 +65,10 @@ export function FoundersManagement() {
   // Calculate counts
 
   const totalFounders = founder.length;
-  const activeFounders = founder.filter((f) => f.status === "verified").length;
-  const blockedFounders = founder.filter(
-    (f) => f.status === "Unverified"
-  ).length;
+  const verifiedFounders = founder.filter((f) => f.status === "verified").length;
+  const blockedFounders = founder.filter((f) => f.status === "blocked").length;
+  const suspendedFounders = founder.filter((f) => f.status === "suspended").length;
+  const unverifiedFounders = founder.filter((f) => f.status === "Unverified").length;
 
   const API_URL =
     "https://onlyfounders.azurewebsites.net/api/admin/profiles/Founder";
@@ -202,8 +202,10 @@ export function FoundersManagement() {
     <>
       <UserCounts
         total={totalFounders}
-        active={activeFounders}
+        verified={verifiedFounders}
         blocked={blockedFounders}
+        suspended={suspendedFounders}
+        unverified={unverifiedFounders}
         userType="Founders"
       />
 

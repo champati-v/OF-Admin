@@ -120,12 +120,10 @@ export function InvestorsManagement() {
 
   // Calculate counts
   const totalInvestors = investors.length;
-  const activeInvestors = investors.filter(
-    (i) => i.status === "verified"
-  ).length;
-  const blockedInvestors = investors.filter(
-    (i) => i.status === "blocked" || i.status === "suspended"
-  ).length;
+  const verifiedInvestors = investors.filter((i) => i.status === "verified").length;
+  const blockedInvestors = investors.filter((i) => i.status === "blocked").length;
+  const suspendedInvestors = investors.filter((i) => i.status === "suspended").length;
+  const unverifiedInvestors = investors.filter((i) => i.status === "Unverified").length;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -225,8 +223,10 @@ export function InvestorsManagement() {
     <>
       <UserCounts
         total={totalInvestors}
-        active={activeInvestors}
+        verified={verifiedInvestors}
         blocked={blockedInvestors}
+        suspended={suspendedInvestors}
+        unverified={unverifiedInvestors}
         userType="Investors"
       />
       
