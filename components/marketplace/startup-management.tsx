@@ -1,8 +1,15 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,31 +17,80 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { MoreHorizontal, Eye, Ban, CheckCircle, BadgeCheck, Star, TrendingUp, ChevronDown } from "lucide-react"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  MoreHorizontal,
+  Eye,
+  Ban,
+  CheckCircle,
+  BadgeCheck,
+  Star,
+  TrendingUp,
+  ChevronDown,
+  Globe,
+  Github,
+  Twitter,
+  MessageSquare,
+  BookOpen,
+  Send,
+  FileText,
+  Key,
+  Copy,
+  ArrowUpRightSquare
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import axios from "axios";
+import {CopyToClipboard} from 'react-copy-to-clipboard'
+import { toast } from "sonner";
 
 // Define the Startup type
 type Startup = {
-  _id?: string
-  name: string
-  founder: string
-  created: string
-  description: string
-  industry: string
-  location: string
-  members: number
-  website: string | null
-  totalRaised: number
-  fundingStage: string
-  verification: string
-  featuredStatus: string
-  campaign: string
-  startupName: string
-  hasCampaign: boolean
-  teamSize: number
+  _id?: string;
+  name: string;
+  founder: string;
+  created: string;
+  description: string;
+  industry: string;
+  location: string;
+  members: number;
+  website: string | null;
+  totalRaised: number;
+  fundingStage: string;
+  verification: string;
+  featuredStatus: string;
+  campaign: string;
+  startupName: string;
+  hasCampaign: boolean;
+  teamSize: number;
+};
+
+interface Docs {
+  socialLinks: {
+    website: string;
+    twitter: string;
+    linkedin: string;
+    telegram: string;
+    discord: string;
+    medium: string;
+  };
+  pitchDeck: {
+    file_url: string;
+    file_name: string;
+    _id: string;
+  }
+
+  pitchDeckText: string;
+  pitchDeck_url: string;
+  pitchDemoVideo_url: string;
+  whitepaper_Url: string;
 }
 
 // Mock data for startups
@@ -141,60 +197,78 @@ type Startup = {
 //   },
 // ]
 
-
-
 export function StartupManagement() {
-  const [selectedStartup, setSelectedStartup] = useState<Startup | null>(null)
-  const [showDetails, setShowDetails] = useState(false)
-  const [startups, setStartups] = useState<Startup[]>([])
+  const [selectedStartup, setSelectedStartup] = useState<Startup | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
+  const [startups, setStartups] = useState<Startup[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [statusLoading, setStatusLoading] = useState(false)
-  const [loading, setLoading] = useState(true)
-   const API_URL =
-      "https://onlyfounders.azurewebsites.net/api/admin/get-all-startups";
-  
-    useEffect(() => {
-      const fetchFounders = async () => {
-        try {
-          const response = await fetch(API_URL, {
-            method: "GET",
-            headers: {
-              user_id: "62684",
-            },
-          });
-          if (!response.ok) throw new Error("Failed to fetch data");
-          const data = await response.json();
-          setStartups(data.startups || []);
-        } catch (err) {
-          const errorMessage = (err as Error).message;
-          setError(errorMessage);
-          console.error("Error fetching startups:", errorMessage, error);
-        } finally {
-          setLoading(false);
-          console.log(loading)
-        }
-      };
-      fetchFounders();
-    }, [statusLoading]);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [docs, setDocs] = useState<Docs[]>([]);
+  const [showDocs, setShowDocs] = useState(false);
+  const API_URL =
+    "https://onlyfounders.azurewebsites.net/api/admin/get-all-startups";
+
+  useEffect(() => {
+    const fetchFounders = async () => {
+      try {
+        const response = await fetch(API_URL, {
+          method: "GET",
+          headers: {
+            user_id: "62684",
+          },
+        });
+        if (!response.ok) throw new Error("Failed to fetch data");
+        const data = await response.json();
+        setStartups(data.startups || []);
+      } catch (err) {
+        const errorMessage = (err as Error).message;
+        setError(errorMessage);
+        console.error("Error fetching startups:", errorMessage, error);
+      } finally {
+        setLoading(false);
+        console.log(loading);
+      }
+    };
+    fetchFounders();
+  }, [statusLoading]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
-    })
-  }
+    });
+  };
 
-  const handleViewDetails = (startup: Startup) => {
-    setSelectedStartup(startup)
-    setShowDetails(true)
-  }
+  const handleViewDetails = async (startup: Startup) => {
+    setSelectedStartup(startup);
+    setShowDetails(true);
+  };
+
+  const handleViewDocs = async (startup: Startup) => {
+    try {
+      setShowDocs(true);
+      const response = await axios.get(
+        `https://onlyfounders.azurewebsites.net/api/admin/get-startup-documents/${startup._id}`,
+        {
+          headers: {
+            user_id: "62684",
+          },
+        }
+      );
+      setDocs(response.data.documents || []);
+    } catch (err) {
+      console.log("Error fetching startup documents:", err);
+    }
+  };
 
   const handleVerifyUnverify = async (startup: Startup) => {
     try {
-      setStatusLoading(true)
+      setStatusLoading(true);
       // Check for "Verified" with capital V
-      const newStatus = startup.verification === "Verified" ? "Unverified" : "Verified"
+      const newStatus =
+        startup.verification === "Verified" ? "Unverified" : "Verified";
 
       const response = await fetch(
         `https://onlyfounders.azurewebsites.net/api/admin/change-verification-status/${startup._id}/${newStatus}`,
@@ -203,33 +277,37 @@ export function StartupManagement() {
           headers: {
             user_id: "62684",
           },
-        },
-      )
+        }
+      );
 
       if (!response.ok) {
-        throw new Error(`Failed to ${newStatus.toLowerCase()} startup`)
+        throw new Error(`Failed to ${newStatus.toLowerCase()} startup`);
       }
 
-      const data = await response.json()
-      console.log(`${newStatus} startup:`, data.message)
+      const data = await response.json();
+      console.log(`${newStatus} startup:`, data.message);
 
       // This will trigger a refetch of the startups list
-      setStatusLoading(false)
+      setStatusLoading(false);
     } catch (err) {
-      const errorMessage = (err as Error).message
+      const errorMessage = (err as Error).message;
       console.error(
-        `Error ${startup.verification === "Verified" ? "unverifying" : "verifying"} startup:`,
-        errorMessage,
-      )
-      setError(errorMessage)
-      setStatusLoading(false)
+        `Error ${
+          startup.verification === "Verified" ? "unverifying" : "verifying"
+        } startup:`,
+        errorMessage
+      );
+      setError(errorMessage);
+      setStatusLoading(false);
     }
-  }
+  };
 
-
-  const handleToggleStatus = async (startup: Startup, newStatus: "Featured" | "Trending") => {
+  const handleToggleStatus = async (
+    startup: Startup,
+    newStatus: "Featured" | "Trending"
+  ) => {
     try {
-      setStatusLoading(true)
+      setStatusLoading(true);
 
       const response = await fetch(
         `https://onlyfounders.azurewebsites.net/api/admin/change-status/${startup._id}/${newStatus}`,
@@ -238,59 +316,79 @@ export function StartupManagement() {
           headers: {
             user_id: "62684",
           },
-        },
-      )
+        }
+      );
 
       if (!response.ok) {
-        throw new Error(`Failed to mark startup as ${newStatus}`)
+        throw new Error(`Failed to mark startup as ${newStatus}`);
       }
 
-      const data = await response.json()
-      console.log(`Status updated to ${newStatus}:`, data.message)
+      const data = await response.json();
+      console.log(`Status updated to ${newStatus}:`, data.message);
 
       // This will trigger a refetch of the startups list
-      setStatusLoading(false)
+      setStatusLoading(false);
     } catch (err) {
-      const errorMessage = (err as Error).message
-      console.error(`Error updating startup status:`, errorMessage)
-      setError(errorMessage)
-      setStatusLoading(false)
+      const errorMessage = (err as Error).message;
+      console.error(`Error updating startup status:`, errorMessage);
+      setError(errorMessage);
+      setStatusLoading(false);
     }
-  }
-
+  };
 
   const handleBlockUnblock = (startup: Startup) => {
     // In a real implementation, this would call an API to update the startup's status
-    console.log(`${startup.verification === "blocked" ? "Unblocking" : "Blocking"} ${startup.startupName}`)
-  }
+    console.log(
+      `${startup.verification === "blocked" ? "Unblocking" : "Blocking"} ${
+        startup.startupName
+      }`
+    );
+  };
 
   const handleViewCampaign = (startup: Startup) => {
     // In a real implementation, this would navigate to the campaign page
-    console.log(`Viewing campaign for ${startup.name}`)
-  }
+    console.log(`Viewing campaign for ${startup.name}`);
+  };
 
   const handleToggleFeatured = (startup: Startup) => {
     // In a real implementation, this would call an API to update the startup's featured status
-    console.log(`${startup.featuredStatus ? "Removing from" : "Adding to"} featured: ${startup.name}`)
-  }
+    console.log(
+      `${startup.featuredStatus ? "Removing from" : "Adding to"} featured: ${
+        startup.name
+      }`
+    );
+  };
 
   const handleToggleTrending = (startup: Startup) => {
     // In a real implementation, this would call an API to update the startup's trending status
-    console.log(`${startup.featuredStatus ? "Removing from" : "Adding to"} trending: ${startup.name}`)
-  }
+    console.log(
+      `${startup.featuredStatus ? "Removing from" : "Adding to"} trending: ${
+        startup.name
+      }`
+    );
+  };
 
   // Helper function to get the appropriate badge variant based on verification status
   const getVerificationBadgeVariant = (status: string) => {
     switch (status) {
       case "verified":
-        return "outline"
+        return "outline";
       case "not verified":
-        return "secondary"
+        return "secondary";
       case "blocked":
-        return "destructive"
+        return "destructive";
       default:
-        return "secondary"
+        return "secondary";
     }
+  };
+
+  const iconMap = {
+    website: <Globe className="w-5 h-5" />,
+    twitter: <Twitter className="w-5 h-5" />,
+    github: <Github className="w-5 h-5" />,
+    telegram: <Send className="w-5 h-5" />,
+    discord: <MessageSquare className="w-5 h-5" />,
+    medium: <BookOpen className="w-5 h-5" />,
   }
 
   return (
@@ -314,8 +412,12 @@ export function StartupManagement() {
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-1">
                     {startup.name}
-                    {startup.featuredStatus === 'Featured' && <Star className="h-4 w-4 text-primary ml-1" />}
-                    {startup.featuredStatus === 'Trending' && <TrendingUp className="h-4 w-4 text-primary ml-1" />}
+                    {startup.featuredStatus === "Featured" && (
+                      <Star className="h-4 w-4 text-primary ml-1" />
+                    )}
+                    {startup.featuredStatus === "Trending" && (
+                      <TrendingUp className="h-4 w-4 text-primary ml-1" />
+                    )}
                   </div>
                 </TableCell>
                 <TableCell>
@@ -330,16 +432,25 @@ export function StartupManagement() {
                 <TableCell>{startup.totalRaised}</TableCell>
                 <TableCell>{startup.fundingStage}</TableCell>
                 <TableCell>
-                <div className="flex flex-row gap-1 items-center">
-                    <Badge variant={getVerificationBadgeVariant(startup.verification)} className="capitalize">
-                      {startup.verification.replace("-", " ")}
+                  <div className="flex flex-row gap-1 items-center">
+                    <Badge
+                      variant={getVerificationBadgeVariant(
+                        startup.verification
+                      )}
+                      className="capitalize"
+                    >
+                      {loading? 'loading...': startup.verification.replace("-", " ")}
                     </Badge>
                     {startup.featuredStatus && (
                       <Badge
                         variant="outline"
-                        className={startup.featuredStatus === "Featured" ? "bg-primary/10" : "bg-blue-500/10"}
+                        className={
+                          startup.featuredStatus === "Featured"
+                            ? "bg-primary/10"
+                            : "bg-blue-500/10"
+                        }
                       >
-                        {startup.featuredStatus}
+                        {loading? 'loading...' : startup.featuredStatus}
                       </Badge>
                     )}
                   </div>
@@ -347,7 +458,11 @@ export function StartupManagement() {
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="text-primary">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-primary"
+                      >
                         <MoreHorizontal className="h-4 w-4" />
                         <span className="sr-only">Actions</span>
                       </Button>
@@ -355,32 +470,47 @@ export function StartupManagement() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => handleViewDetails(startup)}>
+                      <DropdownMenuItem
+                        onClick={() => handleViewDetails(startup)}
+                      >
                         <Eye className="mr-2 h-4 w-4" />
                         View Startup
                       </DropdownMenuItem>
-                      {startup.campaign && (
-                        <DropdownMenuItem onClick={() => handleViewCampaign(startup)}>
+
+                      <DropdownMenuItem onClick={() => handleViewDocs(startup)}>
+                        <Eye className="mr-2 h-4 w-4" />
+                        View Docs
+                      </DropdownMenuItem>
+
+                      {/* {startup.campaign && (
+                        <DropdownMenuItem
+                          onClick={() => handleViewCampaign(startup)}
+                        >
                           <Eye className="mr-2 h-4 w-4" />
                           View Campaign
                         </DropdownMenuItem>
-                      )}
+                      )} */}
                       <DropdownMenuSeparator />
 
                       {/* Verify/Unverify option */}
                       {startup.verification !== "blocked" && (
                         <DropdownMenuItem
                           onClick={() => handleVerifyUnverify(startup)}
-                          className={startup.verification === "Verified" ? "text-red-500" : "text-green-500"}
-                          
+                          className={
+                            startup.verification === "Verified"
+                              ? "text-red-500"
+                              : "text-green-500"
+                          }
                         >
                           <BadgeCheck className="mr-2 h-4 w-4" />
-                          {startup.verification === "Verified" ? "Unverify" : "Verify"}
+                          {startup.verification === "Verified"
+                            ? "Unverify"
+                            : "Verify"}
                         </DropdownMenuItem>
                       )}
 
-                       {/* Status dropdown */}
-                       <DropdownMenu>
+                      {/* Status dropdown */}
+                      <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"
@@ -403,20 +533,28 @@ export function StartupManagement() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="w-48">
                           <DropdownMenuItem
-                            onClick={() => handleToggleStatus(startup, "Featured")}
+                            onClick={() =>
+                              handleToggleStatus(startup, "Featured")
+                            }
                             disabled={startup.featuredStatus === "Featured"}
                             className={
-                              startup.featuredStatus === "Featured" ? "text-muted-foreground" : "text-green-500"
+                              startup.featuredStatus === "Featured"
+                                ? "text-muted-foreground"
+                                : "text-green-500"
                             }
                           >
                             <Star className="mr-2 h-4 w-4" />
                             Mark as Featured
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => handleToggleStatus(startup, "Trending")}
+                            onClick={() =>
+                              handleToggleStatus(startup, "Trending")
+                            }
                             disabled={startup.featuredStatus === "Trending"}
                             className={
-                              startup.featuredStatus === "Trending" ? "text-muted-foreground" : "text-green-500"
+                              startup.featuredStatus === "Trending"
+                                ? "text-muted-foreground"
+                                : "text-green-500"
                             }
                           >
                             <TrendingUp className="mr-2 h-4 w-4" />
@@ -446,7 +584,11 @@ export function StartupManagement() {
                       {/* Block/Unblock option */}
                       <DropdownMenuItem
                         onClick={() => handleBlockUnblock(startup)}
-                        className={startup.verification === "blocked" ? "text-green-500" : "text-red-500"}
+                        className={
+                          startup.verification === "blocked"
+                            ? "text-green-500"
+                            : "text-red-500"
+                        }
                       >
                         {startup.verification === "blocked" ? (
                           <>
@@ -475,47 +617,56 @@ export function StartupManagement() {
           <DialogContent className="sm:max-w-[600px] border border-border">
             <DialogHeader>
               <DialogTitle>Startup Details</DialogTitle>
-              <DialogDescription>Detailed information about {selectedStartup.name}</DialogDescription>
+              <DialogDescription>
+                Detailed information about {selectedStartup.name}
+              </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
                 <div className="font-medium">Name:</div>
                 <div className="col-span-3 flex items-center">
                   {selectedStartup.name}
-                  {selectedStartup.featuredStatus && <Star className="h-4 w-4 text-primary ml-2" />}
-                  {selectedStartup.featuredStatus && <TrendingUp className="h-4 w-4 text-primary ml-2" />}
+                  {selectedStartup.featuredStatus && (
+                    <Star className="h-4 w-4 text-primary ml-2" />
+                  )}
+                  {selectedStartup.featuredStatus && (
+                    <TrendingUp className="h-4 w-4 text-primary ml-2" />
+                  )}
                 </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <div className="font-medium">Founder:</div>
                 <div className="col-span-3">
-                  {/* <Link
-                    href={`/dashboard/users?founder=${selectedStartup.founder.id}`}
-                    className="text-primary hover:underline"
-                  >
-                    {selectedStartup.founder.name}
-                  </Link> */}
+                  <p className="text-primary">{selectedStartup.founder}</p>
                 </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <div className="font-medium">Created:</div>
-                <div className="col-span-3">{formatDate(selectedStartup.created)}</div>
+                <div className="col-span-3">
+                  {formatDate(selectedStartup.created)}
+                </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <div className="font-medium">Description:</div>
                 <div className="col-span-3">{selectedStartup.description}</div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Industry:</div>
-                <div className="col-span-3">{selectedStartup.industry}</div>
+                <div className="flex gap-2 items-center">
+                  <div className="font-medium">Industry:</div>
+                  <div className="col-span-3">{selectedStartup.industry}</div>
+                </div>
+                <div className="flex gap-2 items-center">
+                  <div className="font-medium">Location:</div>
+                  <div className="col-span-3">{selectedStartup.location}</div>
+                </div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Location:</div>
-                <div className="col-span-3">{selectedStartup.location}</div>
-              </div>
+
+              <div className="grid grid-cols-4 items-center gap-4"></div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <div className="font-medium">Team Size:</div>
-                <div className="col-span-3">{selectedStartup.teamSize} members</div>
+                <div className="col-span-3">
+                  {selectedStartup.teamSize} members
+                </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <div className="font-medium">Website:</div>
@@ -535,128 +686,151 @@ export function StartupManagement() {
                 <div className="col-span-3">{selectedStartup.totalRaised}</div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Funding Stage:</div>
-                <div className="col-span-3">{selectedStartup.fundingStage}</div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Verification:</div>
-                <div className="col-span-3">
-                  {/* <Badge
-                    variant={getVerificationBadgeVariant(selectedStartup.verificationStatus)}
-                    className="capitalize"
-                  >
-                    {selectedStartup.verificationStatus.replace("-", " ")}
-                  </Badge> */}
+                <div className="flex gap-2 items-center">
+                  <div className="font-medium">Stage:</div>
+                  <div className="col-span-3">
+                    {selectedStartup.fundingStage}
+                  </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Featured:</div>
-                <div className="col-span-3">
-                  <Badge variant={selectedStartup.featuredStatus ? "outline" : "secondary"}>
-                    {selectedStartup.featuredStatus ? "Yes" : "No"}
-                  </Badge>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Trending:</div>
-                <div className="col-span-3">
-                  <Badge variant={selectedStartup.featuredStatus ? "outline" : "secondary"}>
-                    {selectedStartup.featuredStatus ? "Yes" : "No"}
-                  </Badge>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Campaign:</div>
-                <div className="col-span-3">
-                  {selectedStartup.hasCampaign ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleViewCampaign(selectedStartup)}
-                      className="border-border"
+                <div className="flex gap-2 items-center">
+                  <div className="font-medium">Verification:</div>
+                  <div className="col-span-3">
+                    <Badge
+                      variant={getVerificationBadgeVariant(
+                        selectedStartup.verification
+                      )}
+                      className="capitalize"
                     >
-                      <Eye className="mr-2 h-4 w-4" />
-                      View Campaign
-                    </Button>
-                  ) : (
-                    <span className="text-muted-foreground">No active campaign</span>
-                  )}
+                      {selectedStartup.verification}
+                    </Badge>
+                  </div>
                 </div>
               </div>
-
-              <div className="flex flex-wrap justify-end gap-2 mt-4">
-                {/* Verify/Unverify button */}
-                {selectedStartup.verification !== "blocked" && (
-                  <Button
-                    variant="outline"
-                    className={
-                      selectedStartup.verification === "verified"
-                        ? "border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
-                        : "border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
-                    }
-                    onClick={() => handleVerifyUnverify(selectedStartup)}
-                  >
-                    <BadgeCheck className="mr-2 h-4 w-4" />
-                    {selectedStartup.verification === "verified" ? "Unverify Startup" : "Verify Startup"}
-                  </Button>
-                )}
-
-                {/* Featured button */}
-                <Button
-                  variant="outline"
-                  className={
-                    selectedStartup.featuredStatus
-                      ? "border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
-                      : "border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
-                  }
-                  onClick={() => handleToggleFeatured(selectedStartup)}
-                >
-                  <Star className="mr-2 h-4 w-4" />
-                  {selectedStartup.featuredStatus ? "Remove from Featured" : "Add to Featured"}
-                </Button>
-
-                {/* Trending button */}
-                <Button
-                  variant="outline"
-                  className={
-                    selectedStartup.featuredStatus
-                      ? "border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
-                      : "border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
-                  }
-                  onClick={() => handleToggleTrending(selectedStartup)}
-                >
-                  <TrendingUp className="mr-2 h-4 w-4" />
-                  {selectedStartup.featuredStatus ? "Remove from Trending" : "Add to Trending"}
-                </Button>
-
-                {/* Block/Unblock button */}
-                <Button
-                  variant="outline"
-                  className={
-                    selectedStartup.verification === "blocked"
-                      ? "border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
-                      : "border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
-                  }
-                  onClick={() => handleBlockUnblock(selectedStartup)}
-                >
-                  {selectedStartup.verification === "blocked" ? (
-                    <>
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Unblock Startup
-                    </>
-                  ) : (
-                    <>
-                      <Ban className="mr-2 h-4 w-4" />
-                      Block Startup
-                    </>
-                  )}
-                </Button>
+              <div className="flex items-center gap-2 justify-center text-white bg-blue-500 rounded-sm px-2 py-1">
+                <a href={`https://www.onlyfounders.xyz/marketplace/project/${selectedStartup._id}`} target="_blank" >
+                  View Startup 
+                </a>
+                <ArrowUpRightSquare className="w-5 h-5"/>
               </div>
             </div>
           </DialogContent>
         </Dialog>
       )}
-    </>
-  )
-}
 
+<Dialog open={showDocs} onOpenChange={setShowDocs}>
+  <DialogContent className="sm:max-w-[600px] border border-border">
+    <DialogHeader>
+      <DialogTitle>Startup Documents</DialogTitle>
+    </DialogHeader>
+
+    <div className="space-y-6">
+      {/* Social Links Section */}
+      <div>
+        <p className="text-lg font-semibold mb-2">Social Links</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {Object.entries(docs.socialLinks || {}).map(([key, url]) =>
+            url ? (
+              <a
+                key={key}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 hover:text-primary transition"
+              >
+                {iconMap[key as keyof typeof iconMap]}
+                <span className="capitalize">{key}</span>
+              </a>
+            ) : null
+          )}
+        </div>
+      </div>
+
+      {/* Pitch Deck Section */}
+      {docs? (
+        <>        
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <p className="text-lg font-semibold">Pitch Deck Url</p>
+            <button className="cursor-pointer" onClick={() => toast("Pitch Deck URL copied to clipboard") }>
+              <CopyToClipboard text={docs.pitchDeck_Url}>
+                  <Copy className="w-5 h-5 hover:text-gray-600" />
+              </CopyToClipboard>
+            </button>
+          </div>
+          <a
+            href={docs.pitchDeck_Url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600"
+          >
+            {docs.pitchDeck_Url}
+          </a>
+        </div>
+        
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <p className="text-lg font-semibold">Pitch Deck Text</p>
+            <button className="cursor-pointer" onClick={() => toast("Pitch Deck Text Copied to clipboard") }>
+              <CopyToClipboard text={docs.pitchDeckText}>
+                  <Copy className="w-5 h-5 hover:text-gray-600" />
+              </CopyToClipboard>
+            </button>
+          </div>
+          <p>{docs.pitchDeckText}</p>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <p className="text-lg font-semibold">Pitch Deck File</p>
+          <a href={docs.pitchDeck?.file_url} target="_blank" className="bg-blue-500 px-2 py-0.5 text-white rounded-md">Download File</a>
+        </div>
+
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2"> 
+            <p className="text-lg font-semibold">Pitch demo Video Url</p>
+            <button className="cursor-pointer" onClick={() => toast("Pitch demo Video URL Copied to clipboard") }>
+              <CopyToClipboard text={docs.pitchDemoVideo_Url}>
+                  <Copy className="w-5 h-5 hover:text-gray-600" />
+              </CopyToClipboard>
+            </button>
+          </div>
+          <a
+            href={docs.pitchDemoVideo_Url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600"
+          >
+            {docs.pitchDemoVideo_Url}
+          </a>
+        </div>
+
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <p className="text-lg font-semibold">Whitepaper Url</p>
+            <button className="cursor-pointer" onClick={() => toast("Whitepaper URL Copied to clipboard") }>
+              <CopyToClipboard text={docs.whitepaper_Url}>
+                  <Copy className="w-5 h-5 hover:text-gray-600" />
+              </CopyToClipboard>
+            </button>
+          </div>
+          <a
+            href={docs.whitepaper_Url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600"
+          >
+            {docs.whitepaper_Url}
+          </a>
+        </div>
+      </>
+
+      ): (
+        <div className="text-sm text-muted-foreground">
+          loading...
+        </div>
+      )}
+    </div>
+  </DialogContent>
+</Dialog>
+    </>
+  );
+}

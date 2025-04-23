@@ -24,7 +24,7 @@ export function UserFilters() {
           type="search"
           placeholder="Search users..."
           className="w-[200px] sm:w-[300px] pl-8 border-border"
-          value={searchQuery}
+          value={searchQuery} 
           onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
@@ -39,13 +39,11 @@ export function UserFilters() {
         <DropdownMenuContent align="end" className="w-[200px] border-border">
           <DropdownMenuLabel>Filter By</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuCheckboxItem checked>Active Users</DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem checked>Verified Users</DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem>Blocked Users</DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem>Suspended Users</DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem>Unverified Users</DropdownMenuCheckboxItem>
           <DropdownMenuSeparator />
-          <DropdownMenuLabel>Sort By</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuCheckboxItem checked>Newest First</DropdownMenuCheckboxItem>
-          <DropdownMenuCheckboxItem>Oldest First</DropdownMenuCheckboxItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

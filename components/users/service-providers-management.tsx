@@ -12,9 +12,11 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { MoreHorizontal, Eye, Ban, CheckCircle } from "lucide-react"
+import { MoreHorizontal, Eye, Ban, CheckCircle, Pause } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { UserCounts } from "./user-counts"
+import { toast } from "sonner";
+import axios from "axios"
 
 // Replace the ServiceProvider type with a type that matches the API response
 type ServiceProvider = {
@@ -54,6 +56,7 @@ type ServiceProvider = {
 export function ServiceProvidersManagement() {
   const [serviceProviders, setServiceProviders] = useState<ServiceProvider[]>([])
   const [loading, setLoading] = useState(true)
+  const [statusLoading, setStatusLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedProvider, setSelectedProvider] = useState<ServiceProvider | null>(null)
   const [showProfile, setShowProfile] = useState(false)
@@ -61,7 +64,6 @@ export function ServiceProvidersManagement() {
   useEffect(() => {
     const fetchServiceProviders = async () => {
       try {
-        setLoading(true)
         const response = await fetch("https://onlyfounders.azurewebsites.net/api/admin/profiles/ServiceProvider", {
           headers: {
             user_id: "62684",
@@ -83,16 +85,86 @@ export function ServiceProvidersManagement() {
     }
 
     fetchServiceProviders()
-  }, [])
+  }, [statusLoading])
+
+
+  const handleBlock = async (provider: ServiceProvider) => {
+    try {
+      setStatusLoading(true);
+      const response = await fetch(
+        `https://onlyfounders.azurewebsites.net/api/admin/block/${provider.user_id}`,
+        {
+          method: "PUT",
+          headers: {
+            user_id: "62684",
+          },
+        }
+      );
+
+      if (response.status == 200) {
+        toast("Founder blocked successfully");
+      }
+    } catch (error) {
+      console.error("Error blocking founder:", error);
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
+  const handleVerify = async (provider: ServiceProvider) => {
+    try {
+      setStatusLoading(true);
+      console.log("Verifying founder:", provider.user_id);
+      const response = await axios.put(
+        `https://onlyfounders.azurewebsites.net/api/admin/change-status/${provider.user_id}`,
+        {
+          status: "verified",
+        },
+        {
+          headers: {
+            user_id: "62684",
+          },
+        }
+      );
+      if (response.status == 200) {
+        toast("Founder Verified successfully!");
+      }
+    } catch (error) {
+      console.error("Error verifying founder:", error);
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
+  const handleSuspend = async (provider: ServiceProvider) => {
+    try {
+      setStatusLoading(true);
+      const response = await fetch(
+        `https://onlyfounders.azurewebsites.net/api/admin/suspend/${provider.user_id}`,
+        {
+          method: "PUT",
+          headers: {
+            user_id: "62684",
+          },
+        }
+      );
+
+      if (response.status == 200) {
+        toast("Founder suspended successfully");
+      }
+    } catch (error) {
+      console.error("Error blocking founder:", error);
+    } finally {
+      setStatusLoading(false);
+    }
+  };
 
   // Calculate counts
   const totalProviders = serviceProviders.length
-  const activeProviders = serviceProviders.filter(
-    (p) => p.status?.toLowerCase() === "active" || p.status === "Verified",
-  ).length
-  const blockedProviders = serviceProviders.filter(
-    (p) => p.status?.toLowerCase() === "suspended" || p.status?.toLowerCase() === "blocked",
-  ).length
+  const verifiedProviders = serviceProviders.filter((p) => p.status === "Verified").length
+  const blockedProviders = serviceProviders.filter((p) => p.status?.toLowerCase() === "blocked").length
+  const suspendedProviders = serviceProviders.filter((p) => p.status?.toLowerCase() === "suspended").length
+  const unverifiedProviders = serviceProviders.filter((p) => p.status?.toLowerCase() === "unverified").length
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -124,8 +196,10 @@ export function ServiceProvidersManagement() {
     <>
       <UserCounts
         total={totalProviders}
-        active={activeProviders}
+        verified={verifiedProviders}
         blocked={blockedProviders}
+        suspended={suspendedProviders}
+        unverified={unverifiedProviders}
         userType="Service Providers"
       />
 
@@ -147,16 +221,21 @@ export function ServiceProvidersManagement() {
                 <TableCell>{provider.email}</TableCell>
                 <TableCell>{formatDate(provider.createdAt)}</TableCell>
                 <TableCell>
-                  <Badge
-                    variant={
-                      provider.status?.toLowerCase() === "suspended" || provider.status?.toLowerCase() === "blocked"
-                        ? "destructive"
-                        : "outline"
-                    }
-                    className="capitalize"
+                <div
+                    className={`capitalize text-center w-[80px] text-xs px-2 py-1 rounded-md ${
+                      provider.status === "verified"
+                        ? "bg-green-500 text-white"
+                        : provider.status === "Unverified"
+                        ? "bg-yellow-500"
+                        : provider.status === "blocked"
+                        ? "bg-red-500 text-white"
+                        : provider.status === "suspended"
+                        ? "bg-orange-400"
+                        : ""
+                    }`}
                   >
-                    {provider.status}
-                  </Badge>
+                      {statusLoading ? "loading..." : provider.status}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>
@@ -174,26 +253,20 @@ export function ServiceProvidersManagement() {
                         View Profile
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => handleBlockUnblock(provider)}
-                        className={
-                          provider.status?.toLowerCase() === "suspended" || provider.status?.toLowerCase() === "blocked"
-                            ? "text-green-500"
-                            : "text-red-500"
-                        }
-                      >
-                        {provider.status?.toLowerCase() === "suspended" ||
-                        provider.status?.toLowerCase() === "blocked" ? (
-                          <>
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            Unblock
-                          </>
-                        ) : (
-                          <>
-                            <Ban className="mr-2 h-4 w-4" />
-                            Block
-                          </>
-                        )}
+                      
+                      <DropdownMenuItem className="text-green-500" onClick={() => handleVerify(provider)}>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                         Verify Founder
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem className="text-red-500" onClick={() => handleBlock(provider)}>
+                        <Ban className="mr-2 h-4 w-4" />
+                         Block Founder
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem className="text-orange-500" onClick={() => handleSuspend(provider)}>
+                        <Pause className="mr-2 h-4 w-4" />
+                         Suspend Founder
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -207,12 +280,12 @@ export function ServiceProvidersManagement() {
       {/* Service Provider Profile Dialog */}
       {selectedProvider && (
         <Dialog open={showProfile} onOpenChange={setShowProfile}>
-          <DialogContent className="sm:max-w-[600px] border border-border">
+          <DialogContent className="sm:max-w-screen-sm max-h-screen overflow-y-auto border border-border">
             <DialogHeader>
               <DialogTitle>Service Provider Profile</DialogTitle>
               <DialogDescription>Profile details for {selectedProvider.username}</DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-4">
               {selectedProvider.profilePic && (
                 <div className="flex justify-center">
                   <img
@@ -277,7 +350,7 @@ export function ServiceProvidersManagement() {
               )}
 
               {selectedProvider.serviceProviderData && (
-                <div className="mt-4">
+                <div className="mt-1">
                   <h3 className="text-lg font-medium mb-2">Service Details</h3>
                   <div className="rounded-md border border-border p-4">
                     {selectedProvider.serviceProviderData.buisnessName && (
@@ -308,36 +381,9 @@ export function ServiceProvidersManagement() {
                         <span className="font-medium">Website:</span> {selectedProvider.serviceProviderData.websiteUrl}
                       </div>
                     )}
-                    {!selectedProvider.serviceProviderData.buisnessName &&
-                      !selectedProvider.serviceProviderData.category &&
-                      !selectedProvider.serviceProviderData.serviceDescription && (
-                        <p className="text-muted-foreground">No detailed service information available.</p>
-                      )}
                   </div>
                 </div>
               )}
-
-              <div className="flex justify-end gap-2 mt-4">
-                {selectedProvider.status?.toLowerCase() === "suspended" || selectedProvider.status?.toLowerCase() === "blocked" ? (
-                  <Button
-                    variant="outline"
-                    className="border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
-                    onClick={() => handleBlockUnblock(selectedProvider)}
-                  >
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Unblock Provider
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    className="border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
-                    onClick={() => handleBlockUnblock(selectedProvider)}
-                  >
-                    <Ban className="mr-2 h-4 w-4" />
-                    Block Provider
-                  </Button>
-                )}
-              </div>
             </div>
           </DialogContent>
         </Dialog>

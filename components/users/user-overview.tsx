@@ -103,7 +103,7 @@ export function UsersOverview() {
 
       <Card className="border border-border">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Investors</CardTitle>
+          <CardTitle className="text-sm font-medium">Service Providers</CardTitle>
           <LineChart className="h-4 w-4 text-primary" />
         </CardHeader>
         <CardContent>
@@ -112,18 +112,18 @@ export function UsersOverview() {
             ) : (
             <div className="text-2xl font-bold">{stats.investors}</div>
             )}
-          <p className="text-xs text-muted-foreground">Users who explore and invest in startups</p>
+          <p className="text-xs text-muted-foreground">Users who browse startups but cannot invest</p>
         </CardContent>
       </Card>
 
       <Card className="border border-border">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Service Providers</CardTitle>
+          <CardTitle className="text-sm font-medium">Investors</CardTitle>
           <Users className="h-4 w-4 text-primary" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{stats.serviceProviders}</div>
-          <p className="text-xs text-muted-foreground">Users who browse startups but cannot invest</p>
+          <p className="text-xs text-muted-foreground">Users who explore and invest in startups</p>
         </CardContent>
       </Card>
     </div>

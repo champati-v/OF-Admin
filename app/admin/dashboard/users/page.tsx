@@ -1,3 +1,5 @@
+'use client'
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { UsersOverview } from "@/components/users/user-overview"
 import { FoundersManagement } from "@/components/users/founders-management"
@@ -5,13 +7,24 @@ import { InvestorsManagement } from "@/components/users/investors-management"
 import { ServiceProvidersManagement } from "@/components/users/service-providers-management"
 import {AllUsersManagement} from "@/components/users/all-user-management"
 import { UserFilters } from "@/components/users/user-filters"
+import { Button } from "@/components/ui/button"
+import { useRouter } from "next/navigation"
+import { ArrowLeft } from "lucide-react"
 
 export default function UsersPage() {
+  const router = useRouter()
+
   return (
     <div className="space-y-8">
-      <div>
+      <div className="flex items-center justify-between">
+        <div>
         <h1 className="text-3xl font-bold tracking-tight">Users Management</h1>
         <p className="text-muted-foreground mt-2">Manage all user types—Founders, Investors, and Service Providers</p>
+        </div>
+        <Button onClick={() => router.push('/admin/dashboard')} className="cursor-pointer">
+           <ArrowLeft className="w-4 h-4"/>
+            Back
+        </Button>
       </div>
 
       <UsersOverview />

@@ -47,6 +47,7 @@ const BLOG_CATEGORIES = [
   "Case Studies",
   "Product development",
   "Mental Health",
+  "News and Updates"
 ]
 
 export default function BlogEditor({ params }: { params: Promise<{ id: string }> }) {
