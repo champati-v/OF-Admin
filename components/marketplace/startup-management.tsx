@@ -422,7 +422,7 @@ export function StartupManagement() {
                 </TableCell>
                 <TableCell>
                   <Link
-                    href={`/dashboard/users?founder=${startup._id}`}
+                    href={`/admin/dashboard/users?founder=${startup._id}`}
                     className="text-primary hover:underline"
                   >
                     {startup.name}
