@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -28,7 +28,14 @@ import {
   BarChart3,
   Mail,
 } from "lucide-react"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogPortal, DialogTitle } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogPortal,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { PaginationContent, PaginationPrevious, PaginationNext } from "@/components/ui/pagination"
 import { useRouter } from "next/navigation"
 import {
@@ -745,6 +752,80 @@ export function CampaignManagement() {
   } | null>(null)
   const [milestoneRejectionReason, setMilestoneRejectionReason] = useState("")
 
+  // Add these state variables after the other state declarations in the CampaignManagement component
+  const [isLoading, setIsLoading] = useState(false)
+  const [apiCampaigns, setApiCampaigns] = useState<any[]>([])
+
+  // Add this useEffect hook after the state declarations and before the useMemo hooks
+  useEffect(() => {
+    const fetchCampaignDetails = async () => {
+      setIsLoading(true)
+      try {
+        const response = await fetch("https://ofstaging.azurewebsites.net/api/admin/get-campaign-details", {
+          headers: {
+            user_id: "62684",
+          },
+        })
+
+        if (!response.ok) {
+          throw new Error(`Error fetching campaign details: ${response.statusText}`)
+        }
+
+        const data = await response.json()
+        setApiCampaigns(data)
+
+        // Map API data to our Campaign type
+        const mappedCampaigns = data.map((campaign: any) => ({
+          id: campaign.campaign_id,
+          name: campaign.campaignName,
+          founder: {
+            id: campaign.campaign_id.substring(0, 5),
+            name: campaign.founderName,
+          },
+          startup: {
+            id: campaign.campaign_id.substring(0, 5),
+            name: campaign.startupName,
+            stage: "N/A",
+          },
+          createdDate: campaign.createdDate,
+          fundraisingEndDate: campaign.fundraisingEndDate || new Date().toISOString(),
+          status: campaign.status as "Active" | "Completed" |"Pending",
+          approvalStatus: "approved",
+          targetAmount: `$${campaign.fundingTarget?.toLocaleString() || 0}`,
+          raisedAmount: `$${campaign.totalRaisedOnPlatform?.toLocaleString() || 0}`,
+          milestoneCount: campaign.totalMilestones || 0,
+          completedMilestones: campaign.milestonesCompleted || 0,
+          isFeatured: false,
+          isTrending: false,
+          isBlocked: false,
+          pendingProofs: 0,
+          description: `Campaign for ${campaign.startupName}`,
+          milestones: Array(campaign.totalMilestones || 0)
+            .fill(null)
+            .map((_, i) => ({
+              title: `Milestone ${i + 1}`,
+              description: `Description for milestone ${i + 1}`,
+              targetDate: campaign.fundraisingEndDate || new Date().toISOString(),
+              status:
+                i < (campaign.milestonesCompleted || 0)
+                  ? "Completed"
+                  : ("Upcoming" as "Completed" | "In Progress" | "Upcoming"),
+            })),
+        }))
+
+        // Update allCampaigns with the API data
+        setAllCampaigns([...mappedCampaigns])
+      } catch (error) {
+        console.error("Failed to fetch campaign details:", error)
+        // Keep the mock data if API fails
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchCampaignDetails()
+  }, []) // Empty dependency array means this runs once on component mount
+
   // Update allCampaigns to include rejected campaigns
   const [allCampaigns, setAllCampaigns] = useState<Campaign[]>([
     ...pendingCampaigns,
@@ -754,7 +835,7 @@ export function CampaignManagement() {
 
   // Filter campaigns based on approval status and completion status
   const pendingApprovalCampaigns = useMemo(() => {
-    return allCampaigns.filter((campaign) => campaign.approvalStatus === "pending")
+    return allCampaigns.filter((campaign) => campaign.status === "Pending")
   }, [allCampaigns])
 
   const liveCampaigns = useMemo(() => {
@@ -1047,167 +1128,198 @@ export function CampaignManagement() {
               <TableHead className="w-[80px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {currentCampaigns.map((campaign) => (
-              <TableRow
-                key={campaign.id}
-                className={`border-t border-border ${campaign.pendingProofs > 0 ? "bg-amber-50" : ""}`}
-              >
-                <TableCell className="font-medium">
-                  <div className="flex items-center gap-1">
-                    {campaign.name}
-                    {campaign.isFeatured && <Star className="h-4 w-4 text-primary ml-1" />}
-                    {campaign.isTrending && <TrendingUp className="h-4 w-4 text-primary ml-1" />}
-                    {campaign.pendingProofs > 0 && (
-                      <Badge variant="outline" className="ml-2 bg-amber-100 text-amber-800 border-amber-200">
-                        <Clock className="h-3 w-3 mr-1" />
-                        {campaign.pendingProofs} Pending
-                      </Badge>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Link
-                    href={`/admin/dashboard/users?founder=${campaign.founder.id}`}
-                    className="text-primary hover:underline"
-                  >
-                    {campaign.founder.name}
-                  </Link>
-                </TableCell>
-                <TableCell>
-                  <Link
-                    href={`/admin/dashboard/marketplace?startup=${campaign.startup.id}`}
-                    className="text-primary hover:underline"
-                  >
-                    {campaign.startup.name}
-                  </Link>
-                  <div className="text-xs text-muted-foreground">{campaign.startup.stage}</div>
-                </TableCell>
-                <TableCell>{formatDate(campaign.createdDate)}</TableCell>
-                <TableCell>{formatDate(campaign.fundraisingEndDate)}</TableCell>
-                <TableCell>
-                  <Badge variant={getStatusBadgeVariant(campaign.status)} className="capitalize">
-                    {campaign.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="text-sm">
-                    {campaign.raisedAmount} / {campaign.targetAmount}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="text-sm">
-                    {campaign.completedMilestones}/{campaign.milestoneCount}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="text-primary">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Actions</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-
-                      {/* Show different options based on the active tab */}
-                      {activeTab === "pending" ? (
-                        <>
-                          <DropdownMenuItem onClick={() => handleViewDetails(campaign)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleApproveCampaign(campaign)} className="text-green-500">
-                            <CheckCircle2 className="mr-2 h-4 w-4" />
-                            Approve Campaign
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleRejectCampaign(campaign)} className="text-red-500">
-                            <XCircle className="mr-2 h-4 w-4" />
-                            Reject Campaign
-                          </DropdownMenuItem>
-                        </>
-                      ) : (
-                        <>
-                          <DropdownMenuItem onClick={() => handleViewDetails(campaign)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Campaign
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => router.push(`/admin/dashboard/campaigns/${campaign.id}/investors`)}
-                          >
-                            <DollarSign className="mr-2 h-4 w-4" />
-                            Investment
-                          </DropdownMenuItem>
-
-                          {campaign.pendingProofs > 0 && (
-                            <DropdownMenuItem
-                              onClick={() => handleViewPendingProofs(campaign)}
-                              className="text-amber-600"
-                            >
-                              <Clock className="mr-2 h-4 w-4" />
-                              Review {campaign.pendingProofs} Pending Proof{campaign.pendingProofs > 1 ? "s" : ""}
-                            </DropdownMenuItem>
-                          )}
-
-                          <DropdownMenuSeparator />
-
-                          {/* Featured option */}
-                          <DropdownMenuItem
-                            onClick={() => handleToggleFeatured(campaign)}
-                            className={campaign.isFeatured ? "text-red-500" : "text-green-500"}
-                          >
-                            <Star className="mr-2 h-4 w-4" />
-                            {campaign.isFeatured ? "Remove from Featured" : "Add to Featured"}
-                          </DropdownMenuItem>
-
-                          {/* Trending option */}
-                          <DropdownMenuItem
-                            onClick={() => handleToggleTrending(campaign)}
-                            className={campaign.isTrending ? "text-red-500" : "text-green-500"}
-                          >
-                            <TrendingUp className="mr-2 h-4 w-4" />
-                            {campaign.isTrending ? "Remove from Trending" : "Add to Trending"}
-                          </DropdownMenuItem>
-
-                          {/* Block/Unblock option */}
-                          <DropdownMenuItem
-                            onClick={() => handleToggleBlocked(campaign)}
-                            className={campaign.isBlocked ? "text-green-500" : "text-red-500"}
-                          >
-                            {campaign.isBlocked ? (
-                              <>
-                                <CheckCircle className="mr-2 h-4 w-4" />
-                                Unblock Campaign
-                              </>
-                            ) : (
-                              <>
-                                <Ban className="mr-2 h-4 w-4" />
-                                Block Campaign
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-            {currentCampaigns.length === 0 && (
+          {isLoading ? (
+            <TableBody>
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                  {activeTab === "pending"
-                    ? "No campaigns pending approval"
-                    : activeTab === "live"
-                      ? "No live campaigns found"
-                      : "No completed campaigns found"}
+                <TableCell colSpan={9} className="text-center py-8">
+                  <div className="flex justify-center items-center">
+                    <svg className="animate-spin h-5 w-5 mr-3 text-primary" viewBox="0 0 24 24">
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                        fill="none"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Loading campaigns...
+                  </div>
                 </TableCell>
               </TableRow>
-            )}
-          </TableBody>
+            </TableBody>
+          ) : (
+            <TableBody>
+              {currentCampaigns.map((campaign) => (
+                <TableRow
+                  key={campaign.id}
+                  className={`border-t border-border ${campaign.pendingProofs > 0 ? "bg-amber-50" : ""}`}
+                >
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-1">
+                      {campaign.name}
+                      {campaign.isFeatured && <Star className="h-4 w-4 text-primary ml-1" />}
+                      {campaign.isTrending && <TrendingUp className="h-4 w-4 text-primary ml-1" />}
+                      {campaign.pendingProofs > 0 && (
+                        <Badge variant="outline" className="ml-2 bg-amber-100 text-amber-800 border-amber-200">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {campaign.pendingProofs} Pending
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Link
+                      href={`/admin/dashboard/users?founder=${campaign.founder.id}`}
+                      className="text-primary hover:underline"
+                    >
+                      {campaign.founder.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell>
+                    <Link
+                      href={`/admin/dashboard/marketplace?startup=${campaign.startup.id}`}
+                      className="text-primary hover:underline"
+                    >
+                      {campaign.startup.name}
+                    </Link>
+                    <div className="text-xs text-muted-foreground">{campaign.startup.stage}</div>
+                  </TableCell>
+                  <TableCell>{formatDate(campaign.createdDate)}</TableCell>
+                  <TableCell>{campaign.fundraisingEndDate ? formatDate(campaign.fundraisingEndDate) : "N/A"}</TableCell>
+                  <TableCell>
+                    <Badge variant={getStatusBadgeVariant(campaign.status)} className="capitalize">
+                      {campaign.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm">
+                      {campaign.raisedAmount} / {campaign.targetAmount}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm">
+                      {campaign.completedMilestones}/{campaign.milestoneCount}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="text-primary">
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Actions</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+
+                        {/* Show different options based on the active tab */}
+                        {activeTab === "pending" ? (
+                          <>
+                            <DropdownMenuItem onClick={() => handleViewDetails(campaign)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleApproveCampaign(campaign)}
+                              className="text-green-500"
+                            >
+                              <CheckCircle2 className="mr-2 h-4 w-4" />
+                              Approve Campaign
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleRejectCampaign(campaign)} className="text-red-500">
+                              <XCircle className="mr-2 h-4 w-4" />
+                              Reject Campaign
+                            </DropdownMenuItem>
+                          </>
+                        ) : (
+                          <>
+                            <DropdownMenuItem onClick={() => handleViewDetails(campaign)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Campaign
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => router.push(`/admin/dashboard/campaigns/${campaign.id}/investors`)}
+                            >
+                              <DollarSign className="mr-2 h-4 w-4" />
+                              Investment
+                            </DropdownMenuItem>
+
+                            {campaign.pendingProofs > 0 && (
+                              <DropdownMenuItem
+                                onClick={() => handleViewPendingProofs(campaign)}
+                                className="text-amber-600"
+                              >
+                                <Clock className="mr-2 h-4 w-4" />
+                                Review {campaign.pendingProofs} Pending Proof{campaign.pendingProofs > 1 ? "s" : ""}
+                              </DropdownMenuItem>
+                            )}
+
+                            <DropdownMenuSeparator />
+
+                            {/* Featured option */}
+                            <DropdownMenuItem
+                              onClick={() => handleToggleFeatured(campaign)}
+                              className={campaign.isFeatured ? "text-red-500" : "text-green-500"}
+                            >
+                              <Star className="mr-2 h-4 w-4" />
+                              {campaign.isFeatured ? "Remove from Featured" : "Add to Featured"}
+                            </DropdownMenuItem>
+
+                            {/* Trending option */}
+                            <DropdownMenuItem
+                              onClick={() => handleToggleTrending(campaign)}
+                              className={campaign.isTrending ? "text-red-500" : "text-green-500"}
+                            >
+                              <TrendingUp className="mr-2 h-4 w-4" />
+                              {campaign.isTrending ? "Remove from Trending" : "Add to Trending"}
+                            </DropdownMenuItem>
+
+                            {/* Block/Unblock option */}
+                            <DropdownMenuItem
+                              onClick={() => handleToggleBlocked(campaign)}
+                              className={campaign.isBlocked ? "text-green-500" : "text-red-500"}
+                            >
+                              {campaign.isBlocked ? (
+                                <>
+                                  <CheckCircle className="mr-2 h-4 w-4" />
+                                  Unblock Campaign
+                                </>
+                              ) : (
+                                <>
+                                  <Ban className="mr-2 h-4 w-4" />
+                                  Block Campaign
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {currentCampaigns.length === 0 && !isLoading && (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    {activeTab === "pending"
+                      ? "No campaigns pending approval"
+                      : activeTab === "live"
+                        ? "No live campaigns found"
+                        : "No completed campaigns found"}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          )}
         </Table>
       </div>
 
@@ -1239,164 +1351,164 @@ export function CampaignManagement() {
           }}
         >
           <DialogPortal>
-          <DialogContent className="sm:max-w-[700px] border border-border max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Campaign Details</DialogTitle>
-              <DialogDescription>Detailed information about {selectedCampaign.name}</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Campaign:</div>
-                <div className="col-span-3 flex items-center">
-                  {selectedCampaign.name}
-                  {selectedCampaign.isFeatured && <Star className="h-4 w-4 text-primary ml-2" />}
-                  {selectedCampaign.isTrending && <TrendingUp className="h-4 w-4 text-primary ml-2" />}
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Founder:</div>
-                <div className="col-span-3">
-                  <Link
-                    href={`/admin/dashboard/users?founder=${selectedCampaign.founder.id}`}
-                    className="text-primary hover:underline"
-                  >
-                    {selectedCampaign.founder.name}
-                  </Link>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Startup:</div>
-                <div className="col-span-3">
-                  <Link
-                    href={`/admin/dashboard/marketplace?startup=${selectedCampaign.startup.id}`}
-                    className="text-primary hover:underline"
-                  >
-                    {selectedCampaign.startup.name}
-                  </Link>
-                  <div className="text-xs text-muted-foreground">{selectedCampaign.startup.stage}</div>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Created Date:</div>
-                <div className="col-span-3">{formatDate(selectedCampaign.createdDate)}</div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Fundraising End Date:</div>
-                <div className="col-span-3">{formatDate(selectedCampaign.fundraisingEndDate)}</div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Status:</div>
-                <div className="col-span-3">
-                  <Badge variant={getStatusBadgeVariant(selectedCampaign.status)} className="capitalize">
-                    {selectedCampaign.status}
-                  </Badge>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Fundraising:</div>
-                <div className="col-span-3">
-                  {selectedCampaign.raisedAmount} / {selectedCampaign.targetAmount} (
-                  {calculateProgress(selectedCampaign.raisedAmount, selectedCampaign.targetAmount)}%)
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Milestones:</div>
-                <div className="col-span-3">
-                  {selectedCampaign.completedMilestones}/{selectedCampaign.milestoneCount} completed
-                  {selectedCampaign.pendingProofs > 0 && (
-                    <Badge variant="outline" className="ml-2 bg-amber-100 text-amber-800 border-amber-200">
-                      {selectedCampaign.pendingProofs} Pending Proof{selectedCampaign.pendingProofs > 1 ? "s" : ""}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Description:</div>
-                <div className="col-span-3">{selectedCampaign.description}</div>
-              </div>
+            <DialogContent className="sm:max-w-[700px] border border-border max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Campaign Details</DialogTitle>
+                <DialogDescription>Detailed information about {selectedCampaign.name}</DialogDescription>
+              </DialogHeader>
               <div className="grid gap-4 py-4">
-                <h3 className="text-lg font-semibold">Milestones</h3>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Milestones can be verified and funds released at any time, regardless of fundraising status.
-                </p>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Title</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Target Date</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="w-[100px]">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {selectedCampaign.milestones.map((milestone, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{milestone.title}</TableCell>
-                          <TableCell>{milestone.description}</TableCell>
-                          <TableCell>{formatDate(milestone.targetDate)}</TableCell>
-                          <TableCell>
-                            <Badge variant="secondary" className="capitalize">
-                              {milestone.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {milestone.status === "In Progress" && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 px-2 text-red-500 hover:bg-red-50"
-                                onClick={() => handleRejectMilestone(selectedCampaign, index)}
-                              >
-                                <XCircle className="h-3 w-3 mr-1" />
-                                Reject
-                              </Button>
-                            )}
-                          </TableCell>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <div className="font-medium">Campaign:</div>
+                  <div className="col-span-3 flex items-center">
+                    {selectedCampaign.name}
+                    {selectedCampaign.isFeatured && <Star className="h-4 w-4 text-primary ml-2" />}
+                    {selectedCampaign.isTrending && <TrendingUp className="h-4 w-4 text-primary ml-2" />}
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <div className="font-medium">Founder:</div>
+                  <div className="col-span-3">
+                    <Link
+                      href={`/admin/dashboard/users?founder=${selectedCampaign.founder.id}`}
+                      className="text-primary hover:underline"
+                    >
+                      {selectedCampaign.founder.name}
+                    </Link>
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <div className="font-medium">Startup:</div>
+                  <div className="col-span-3">
+                    <Link
+                      href={`/admin/dashboard/marketplace?startup=${selectedCampaign.startup.id}`}
+                      className="text-primary hover:underline"
+                    >
+                      {selectedCampaign.startup.name}
+                    </Link>
+                    <div className="text-xs text-muted-foreground">{selectedCampaign.startup.stage}</div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <div className="font-medium">Created Date:</div>
+                  <div className="col-span-3">{formatDate(selectedCampaign.createdDate)}</div>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <div className="font-medium">Fundraising End Date:</div>
+                  <div className="col-span-3">{formatDate(selectedCampaign.fundraisingEndDate)}</div>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <div className="font-medium">Status:</div>
+                  <div className="col-span-3">
+                    <Badge variant={getStatusBadgeVariant(selectedCampaign.status)} className="capitalize">
+                      {selectedCampaign.status}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <div className="font-medium">Fundraising:</div>
+                  <div className="col-span-3">
+                    {selectedCampaign.raisedAmount} / {selectedCampaign.targetAmount} (
+                    {calculateProgress(selectedCampaign.raisedAmount, selectedCampaign.targetAmount)}%)
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <div className="font-medium">Milestones:</div>
+                  <div className="col-span-3">
+                    {selectedCampaign.completedMilestones}/{selectedCampaign.milestoneCount} completed
+                    {selectedCampaign.pendingProofs > 0 && (
+                      <Badge variant="outline" className="ml-2 bg-amber-100 text-amber-800 border-amber-200">
+                        {selectedCampaign.pendingProofs} Pending Proof{selectedCampaign.pendingProofs > 1 ? "s" : ""}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <div className="font-medium">Description:</div>
+                  <div className="col-span-3">{selectedCampaign.description}</div>
+                </div>
+                <div className="grid gap-4 py-4">
+                  <h3 className="text-lg font-semibold">Milestones</h3>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Milestones can be verified and funds released at any time, regardless of fundraising status.
+                  </p>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Title</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead>Target Date</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="w-[100px]">Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedCampaign.milestones.map((milestone, index) => (
+                          <TableRow key={index}>
+                            <TableCell>{milestone.title}</TableCell>
+                            <TableCell>{milestone.description}</TableCell>
+                            <TableCell>{formatDate(milestone.targetDate)}</TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="capitalize">
+                                {milestone.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {milestone.status === "In Progress" && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 px-2 text-red-500 hover:bg-red-50"
+                                  onClick={() => handleRejectMilestone(selectedCampaign, index)}
+                                >
+                                  <XCircle className="h-3 w-3 mr-1" />
+                                  Reject
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
-              </div>
 
-              {/* Add approval/rejection buttons for pending campaigns */}
-              {selectedCampaign.approvalStatus === "pending" && (
-                <div className="flex justify-end gap-2 mt-4">
-                  <Button
-                    variant="outline"
-                    className="border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
-                    onClick={() => {
-                      setShowDetails(false)
-                      setTimeout(() => {
-                        setSelectedCampaign(null)
-                        handleRejectCampaign(selectedCampaign)
-                      }, 10)
-                    }}
-                  >
-                    <XCircle className="mr-2 h-4 w-4" />
-                    Reject Campaign
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
-                    onClick={() => {
-                      setShowDetails(false)
-                      setTimeout(() => {
-                        setSelectedCampaign(null)
-                        handleApproveCampaign(selectedCampaign)
-                      }, 10)
-                    }}
-                  >
-                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                    Approve Campaign
-                  </Button>
-                </div>
-              )}
-            </div>
-          </DialogContent>
-            </DialogPortal>
+                {/* Add approval/rejection buttons for pending campaigns */}
+                {selectedCampaign.approvalStatus === "pending" && (
+                  <div className="flex justify-end gap-2 mt-4">
+                    <Button
+                      variant="outline"
+                      className="border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
+                      onClick={() => {
+                        setShowDetails(false)
+                        setTimeout(() => {
+                          setSelectedCampaign(null)
+                          handleRejectCampaign(selectedCampaign)
+                        }, 10)
+                      }}
+                    >
+                      <XCircle className="mr-2 h-4 w-4" />
+                      Reject Campaign
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
+                      onClick={() => {
+                        setShowDetails(false)
+                        setTimeout(() => {
+                          setSelectedCampaign(null)
+                          handleApproveCampaign(selectedCampaign)
+                        }, 10)
+                      }}
+                    >
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Approve Campaign
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </DialogPortal>
         </Dialog>
       )}
 
@@ -1574,49 +1686,49 @@ export function CampaignManagement() {
         }}
       >
         <DialogPortal>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reject Campaign</AlertDialogTitle>
-            <AlertDialogDescription>
-              Please provide a reason for rejecting this campaign. This will be sent to the founder via email.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reject Campaign</AlertDialogTitle>
+              <AlertDialogDescription>
+                Please provide a reason for rejecting this campaign. This will be sent to the founder via email.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
 
-          {campaignToReject && (
-            <div className="mt-2 p-3 bg-muted rounded-md">
-              <div className="font-medium">Campaign: {campaignToReject.name}</div>
-              <div className="font-medium">Founder: {campaignToReject.founder.name}</div>
-              <div className="font-medium">Startup: {campaignToReject.startup.name}</div>
+            {campaignToReject && (
+              <div className="mt-2 p-3 bg-muted rounded-md">
+                <div className="font-medium">Campaign: {campaignToReject.name}</div>
+                <div className="font-medium">Founder: {campaignToReject.founder.name}</div>
+                <div className="font-medium">Startup: {campaignToReject.startup.name}</div>
+              </div>
+            )}
+
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="rejection-reason">Rejection Reason</Label>
+                <Textarea
+                  id="rejection-reason"
+                  placeholder="Please explain why this campaign is being rejected..."
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  className="min-h-[120px]"
+                />
+              </div>
             </div>
-          )}
 
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="rejection-reason">Rejection Reason</Label>
-              <Textarea
-                id="rejection-reason"
-                placeholder="Please explain why this campaign is being rejected..."
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                className="min-h-[120px]"
-              />
-            </div>
-          </div>
-
-          <AlertDialogFooter>
-            <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={confirmRejectCampaign}
-              className="bg-red-500 hover:bg-red-600 text-white"
-              disabled={!rejectionReason.trim()}
-            >
-              <Mail className="mr-2 h-4 w-4" />
-              Reject & Send Email
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
+            <AlertDialogFooter>
+              <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmRejectCampaign}
+                className="bg-red-500 hover:bg-red-600 text-white"
+                disabled={!rejectionReason.trim()}
+              >
+                <Mail className="mr-2 h-4 w-4" />
+                Reject & Send Email
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
         </DialogPortal>
       </Dialog>
 
@@ -1635,49 +1747,49 @@ export function CampaignManagement() {
         }}
       >
         <DialogPortal>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reject Milestone Proof</AlertDialogTitle>
-            <AlertDialogDescription>
-              Please provide a reason for rejecting this milestone proof. This will be sent to the founder via email.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reject Milestone Proof</AlertDialogTitle>
+              <AlertDialogDescription>
+                Please provide a reason for rejecting this milestone proof. This will be sent to the founder via email.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
 
-          {milestoneToReject && (
-            <div className="mt-2 p-3 bg-muted rounded-md">
-              <div className="font-medium">Campaign: {milestoneToReject.name}</div>
-              <div className="font-medium">Founder: {milestoneToReject.founder.name}</div>
-              <div className="font-medium">Startup: {milestoneToReject.startup.name}</div>
+            {/* {milestoneToReject && (
+              <div className="mt-2 p-3 bg-muted rounded-md">
+                <div className="font-medium">Campaign: {milestoneToReject.name}</div>
+                <div className="font-medium">Founder: {milestoneToReject.founder.name}</div>
+                <div className="font-medium">Startup: {milestoneToReject.startup.name}</div>
+              </div>
+            )} */}
+
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="rejection-reason">Rejection Reason</Label>
+                <Textarea
+                  id="rejection-reason"
+                  placeholder="Please explain why this campaign is being rejected..."
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  className="min-h-[120px]"
+                />
+              </div>
             </div>
-          )}
 
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="rejection-reason">Rejection Reason</Label>
-              <Textarea
-                id="rejection-reason"
-                placeholder="Please explain why this campaign is being rejected..."
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                className="min-h-[120px]"
-              />
-            </div>
-          </div>
-
-          <AlertDialogFooter>
-            <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={confirmRejectCampaign}
-              className="bg-red-500 hover:bg-red-600 text-white"
-              disabled={!rejectionReason.trim()}
-            >
-              <Mail className="mr-2 h-4 w-4" />
-              Reject & Send Email
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
+            <AlertDialogFooter>
+              <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmRejectCampaign}
+                className="bg-red-500 hover:bg-red-600 text-white"
+                disabled={!rejectionReason.trim()}
+              >
+                <Mail className="mr-2 h-4 w-4" />
+                Reject & Send Email
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
         </DialogPortal>
       </Dialog>
     </>
