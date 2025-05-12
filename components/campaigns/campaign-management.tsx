@@ -28,14 +28,7 @@ import {
   BarChart3,
   Mail,
 } from "lucide-react"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogPortal,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogPortal, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { PaginationContent, PaginationPrevious, PaginationNext } from "@/components/ui/pagination"
 import { useRouter } from "next/navigation"
 import {
@@ -67,8 +60,9 @@ type Campaign = {
     stage: string
   }
   createdDate: string
+  campaign_id?: string // Added for API compatibility
   fundraisingEndDate: string // Renamed from endingDate to be more specific
-  status: "Active" | "Completed" // Removed "Failed" status
+  status: "Active" | "Completed" | "Pending" // Removed "Failed" status
   approvalStatus?: "pending" | "approved" | "rejected"
   targetAmount: string
   raisedAmount: string
@@ -789,7 +783,7 @@ export function CampaignManagement() {
           },
           createdDate: campaign.createdDate,
           fundraisingEndDate: campaign.fundraisingEndDate || new Date().toISOString(),
-          status: campaign.status as "Active" | "Completed" |"Pending",
+          status: campaign.status as "Active" | "Completed" | "Pending",
           approvalStatus: "approved",
           targetAmount: `$${campaign.fundingTarget?.toLocaleString() || 0}`,
           raisedAmount: `$${campaign.totalRaisedOnPlatform?.toLocaleString() || 0}`,
@@ -824,14 +818,10 @@ export function CampaignManagement() {
     }
 
     fetchCampaignDetails()
-  }, []) // Empty dependency array means this runs once on component mount
+  }, [campaignToApprove])
 
   // Update allCampaigns to include rejected campaigns
-  const [allCampaigns, setAllCampaigns] = useState<Campaign[]>([
-    ...pendingCampaigns,
-    ...campaigns,
-    ...rejectedCampaigns,
-  ])
+  const [allCampaigns, setAllCampaigns] = useState<Campaign[]>([])
 
   // Filter campaigns based on approval status and completion status
   const pendingApprovalCampaigns = useMemo(() => {
@@ -923,9 +913,42 @@ export function CampaignManagement() {
   }
 
   // Add new handlers for approving and rejecting campaigns
-  const handleApproveCampaign = (campaign: Campaign) => {
-    setCampaignToApprove(campaign)
-    setShowApproveAlert(true)
+  const handleApproveCampaign = async (campaign: Campaign) => {
+    try {
+      setIsLoading(true)
+      const response = await fetch(`https://ofStaging.azurewebsites.net/api/admin/change-campaignStatus/${campaign.id}`,
+        {
+          method: "POST", // Add the missing method
+          headers: {
+            "Content-Type": "application/json",
+            user_id: "62684",
+          },
+          body: JSON.stringify({ status: "Completed" }),
+        },
+      )
+
+      // Set the campaign to approve and show the alert
+      setCampaignToApprove(campaign)
+
+      // Update the campaign's approval status in the local state
+      // setAllCampaigns(allCampaigns.map((c) => (c.id === campaign.id ? { ...c, approvalStatus: "approved" } : c)))
+
+      // Show success toast
+      toast({
+        title: "Campaign Approved",
+        description: "The campaign has been approved successfully!",
+      })
+
+    } catch (error) {
+      console.error("Error approving campaign:", error)
+      toast({
+        title: "Error",
+        description: "Error approving campaign. Please try again later.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const confirmApproveCampaign = () => {
@@ -946,10 +969,42 @@ export function CampaignManagement() {
   }
 
   // Updated rejection handler to open the dialog for entering a reason
-  const handleRejectCampaign = (campaign: Campaign) => {
-    setCampaignToReject(campaign)
-    setRejectionReason("") // Clear previous reason
-    setShowRejectDialog(true)
+  const handleRejectCampaign = async (campaign: Campaign) => {
+  try {
+      setIsLoading(true)
+      const response = await fetch(`https://ofStaging.azurewebsites.net/api/admin/change-campaignStatus/${campaign.id}`,
+        {
+          method: "POST", // Add the missing method
+          headers: {
+            "Content-Type": "application/json",
+            user_id: "62684",
+          },
+          body: JSON.stringify({ status: "Rejected" }),
+        },
+      )
+
+      // Set the campaign to approve and show the alert
+      setCampaignToApprove(campaign)
+
+      // Update the campaign's approval status in the local state
+      // setAllCampaigns(allCampaigns.map((c) => (c.id === campaign.id ? { ...c, approvalStatus: "approved" } : c)))
+
+      // Show success toast
+      toast({
+        title: "Campaign Approved",
+        description: "The campaign has been approved successfully!",
+      })
+
+    } catch (error) {
+      console.error("Error approving campaign:", error)
+      toast({
+        title: "Error",
+        description: "Error approving campaign. Please try again later.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   // New function to handle the rejection with reason
@@ -1216,14 +1271,16 @@ export function CampaignManagement() {
                           <span className="sr-only">Actions</span>
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent
+                        align="end"
+                      >
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuSeparator />
 
                         {/* Show different options based on the active tab */}
                         {activeTab === "pending" ? (
                           <>
-                            <DropdownMenuItem onClick={() => handleViewDetails(campaign)}>
+                            <DropdownMenuItem>
                               <Eye className="mr-2 h-4 w-4" />
                               View Details
                             </DropdownMenuItem>
@@ -1335,21 +1392,7 @@ export function CampaignManagement() {
 
       {/* Campaign Details Dialog */}
       {selectedCampaign && (
-        <Dialog
-          open={showDetails}
-          onOpenChange={(open) => {
-            if (!open) {
-              // Immediately set showDetails to false
-              setShowDetails(false)
-              // Use a more direct approach to reset state
-              document.body.style.pointerEvents = "" // Ensure pointer events are enabled
-              // Small delay before removing the campaign from state
-              setTimeout(() => {
-                setSelectedCampaign(null)
-              }, 10)
-            }
-          }}
-        >
+        <Dialog open={showDetails} onOpenChange={setShowDetails}>
           <DialogPortal>
             <DialogContent className="sm:max-w-[700px] border border-border max-h-[90vh] overflow-y-auto">
               <DialogHeader>
@@ -1472,40 +1515,6 @@ export function CampaignManagement() {
                     </Table>
                   </div>
                 </div>
-
-                {/* Add approval/rejection buttons for pending campaigns */}
-                {selectedCampaign.approvalStatus === "pending" && (
-                  <div className="flex justify-end gap-2 mt-4">
-                    <Button
-                      variant="outline"
-                      className="border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
-                      onClick={() => {
-                        setShowDetails(false)
-                        setTimeout(() => {
-                          setSelectedCampaign(null)
-                          handleRejectCampaign(selectedCampaign)
-                        }, 10)
-                      }}
-                    >
-                      <XCircle className="mr-2 h-4 w-4" />
-                      Reject Campaign
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
-                      onClick={() => {
-                        setShowDetails(false)
-                        setTimeout(() => {
-                          setSelectedCampaign(null)
-                          handleApproveCampaign(selectedCampaign)
-                        }, 10)
-                      }}
-                    >
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
-                      Approve Campaign
-                    </Button>
-                  </div>
-                )}
               </div>
             </DialogContent>
           </DialogPortal>
@@ -1515,16 +1524,6 @@ export function CampaignManagement() {
       {/* Featured Confirmation Dialog */}
       <AlertDialog
         open={showFeaturedAlert}
-        onOpenChange={(open) => {
-          setShowFeaturedAlert(open)
-          if (!open) {
-            setTimeout(() => {
-              if (!open && campaignToFeature) {
-                setCampaignToFeature(null)
-              }
-            }, 100)
-          }
-        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -1555,16 +1554,6 @@ export function CampaignManagement() {
       {/* Trending Confirmation Dialog */}
       <AlertDialog
         open={showTrendingAlert}
-        onOpenChange={(open) => {
-          setShowTrendingAlert(open)
-          if (!open) {
-            setTimeout(() => {
-              if (!open && campaignToTrend) {
-                setCampaignToTrend(null)
-              }
-            }, 100)
-          }
-        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -1595,16 +1584,6 @@ export function CampaignManagement() {
       {/* Block/Unblock Confirmation Dialog */}
       <AlertDialog
         open={showBlockAlert}
-        onOpenChange={(open) => {
-          setShowBlockAlert(open)
-          if (!open) {
-            setTimeout(() => {
-              if (!open && campaignToBlock) {
-                setCampaignToBlock(null)
-              }
-            }, 100)
-          }
-        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -1674,16 +1653,6 @@ export function CampaignManagement() {
       {/* Campaign Rejection Dialog with Reason */}
       <Dialog
         open={showRejectDialog}
-        onOpenChange={(open) => {
-          setShowRejectDialog(open)
-          if (!open) {
-            setTimeout(() => {
-              if (!open && campaignToReject) {
-                setCampaignToReject(null)
-              }
-            }, 100)
-          }
-        }}
       >
         <DialogPortal>
           <AlertDialogContent>
@@ -1735,16 +1704,6 @@ export function CampaignManagement() {
       {/* Milestone Rejection Dialog with Reason */}
       <Dialog
         open={showMilestoneRejectDialog}
-        onOpenChange={(open) => {
-          setShowMilestoneRejectDialog(open)
-          if (!open) {
-            setTimeout(() => {
-              if (!open && milestoneToReject) {
-                setMilestoneToReject(null)
-              }
-            }, 100)
-          }
-        }}
       >
         <DialogPortal>
           <AlertDialogContent>
