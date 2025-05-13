@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Table,
@@ -206,8 +206,38 @@ export function StartupManagement() {
   const [loading, setLoading] = useState(true);
   const [docs, setDocs] = useState<Docs[]>([]);
   const [showDocs, setShowDocs] = useState(false);
-  const API_URL =
-    "https://onlyfounders.azurewebsites.net/api/admin/get-all-startups";
+  const API_URL = "https://onlyfounders.azurewebsites.net/api/admin/get-all-startups";
+
+  const modalRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+  function handleClickOutside(event: MouseEvent) {
+    if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+      setShowDetails(false); // close the modal
+    }
+  }
+
+  document.addEventListener("mousedown", handleClickOutside);
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, []);
+
+const docsModalRef = useRef<HTMLDivElement>(null);
+
+useEffect(() => {
+  const handleClickOutside = (event: MouseEvent) => {
+    if (docsModalRef.current && !docsModalRef.current.contains(event.target as Node)) {
+      setShowDocs(false);
+    }
+  };
+
+  document.addEventListener("mousedown", handleClickOutside);
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, []);
+
+
 
   useEffect(() => {
     const fetchFounders = async () => {
@@ -244,6 +274,11 @@ export function StartupManagement() {
   const handleViewDetails = async (startup: Startup) => {
     setSelectedStartup(startup);
     setShowDetails(true);
+  };
+
+  const closeViewDetails = async () => {
+    setShowDetails(false);
+    setSelectedStartup(null);
   };
 
   const handleViewDocs = async (startup: Startup) => {
@@ -612,225 +647,258 @@ export function StartupManagement() {
       </div>
 
       {/* Startup Details Dialog */}
-      {selectedStartup && (
-        <Dialog open={showDetails} onOpenChange={setShowDetails}>
-          <DialogContent className="sm:max-w-[600px] border border-border">
-            <DialogHeader>
-              <DialogTitle>Startup Details</DialogTitle>
-              <DialogDescription>
-                Detailed information about {selectedStartup.name}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Name:</div>
-                <div className="col-span-3 flex items-center">
-                  {selectedStartup.name}
-                  {selectedStartup.featuredStatus && (
-                    <Star className="h-4 w-4 text-primary ml-2" />
-                  )}
-                  {selectedStartup.featuredStatus && (
-                    <TrendingUp className="h-4 w-4 text-primary ml-2" />
-                  )}
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Founder:</div>
-                <div className="col-span-3">
-                  <p className="text-primary">{selectedStartup.founder}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Created:</div>
-                <div className="col-span-3">
-                  {formatDate(selectedStartup.created)}
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Description:</div>
-                <div className="col-span-3">{selectedStartup.description}</div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="flex gap-2 items-center">
-                  <div className="font-medium">Industry:</div>
-                  <div className="col-span-3">{selectedStartup.industry}</div>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <div className="font-medium">Location:</div>
-                  <div className="col-span-3">{selectedStartup.location}</div>
-                </div>
-              </div>
+  {showDetails && selectedStartup && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div ref={modalRef} className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg w-full max-w-2xl relative p-6 overflow-y-auto max-h-[90vh] border border-border">
+      <button
+        onClick={() => setShowDetails(false)}
+        className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition"
+      >
+        ✕
+      </button>
 
-              <div className="grid grid-cols-4 items-center gap-4"></div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Team Size:</div>
-                <div className="col-span-3">
-                  {selectedStartup.teamSize} members
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Website:</div>
-                <div className="col-span-3">
-                  <a
-                    href={`https://${selectedStartup.website}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline"
-                  >
-                    {selectedStartup.website}
-                  </a>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Total Raised:</div>
-                <div className="col-span-3">{selectedStartup.totalRaised}</div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="flex gap-2 items-center">
-                  <div className="font-medium">Stage:</div>
-                  <div className="col-span-3">
-                    {selectedStartup.fundingStage}
-                  </div>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <div className="font-medium">Verification:</div>
-                  <div className="col-span-3">
-                    <Badge
-                      variant={getVerificationBadgeVariant(
-                        selectedStartup.verification
-                      )}
-                      className="capitalize"
-                    >
-                      {selectedStartup.verification}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 justify-center text-white bg-blue-500 rounded-sm px-2 py-1">
-                <a href={`https://www.onlyfounders.xyz/marketplace/project/${selectedStartup._id}`} target="_blank" >
-                  View Startup 
-                </a>
-                <ArrowUpRightSquare className="w-5 h-5"/>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+      <h2 className="text-xl font-semibold mb-2">Startup Details</h2>
+      <p className="text-muted-foreground mb-4">
+        Detailed information about {selectedStartup.name}
+      </p>
 
-<Dialog open={showDocs} onOpenChange={setShowDocs}>
-  <DialogContent className="sm:max-w-[600px] border border-border">
-    <DialogHeader>
-      <DialogTitle>Startup Documents</DialogTitle>
-    </DialogHeader>
+      <div className="grid gap-4">
+        <div className="grid grid-cols-4 items-center gap-4">
+          <div className="font-medium">Name:</div>
+          <div className="col-span-3 flex items-center gap-2">
+            {selectedStartup.name}
+            {selectedStartup.featuredStatus === "Featured" && (
+              <Star className="h-4 w-4 text-primary" />
+            )}
+            {selectedStartup.featuredStatus === "Trending" && (
+              <TrendingUp className="h-4 w-4 text-primary" />
+            )}
+          </div>
+        </div>
 
-    <div className="space-y-6">
-      {/* Social Links Section */}
-      <div>
-        <p className="text-lg font-semibold mb-2">Social Links</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {Object.entries(docs.socialLinks || {}).map(([key, url]) =>
-            url ? (
-              <a
-                key={key}
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 hover:text-primary transition"
-              >
-                {iconMap[key as keyof typeof iconMap]}
-                <span className="capitalize">{key}</span>
-              </a>
-            ) : null
-          )}
+        <div className="grid grid-cols-4 items-center gap-4">
+          <div className="font-medium">Founder:</div>
+          <div className="col-span-3 text-primary">
+            {selectedStartup.founder}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-4 items-center gap-4">
+          <div className="font-medium">Created:</div>
+          <div className="col-span-3">{formatDate(selectedStartup.created)}</div>
+        </div>
+
+        <div className="grid grid-cols-4 items-center gap-4">
+          <div className="font-medium">Description:</div>
+          <div className="col-span-3">{selectedStartup.description}</div>
+        </div>
+
+        <div className="grid grid-cols-4 items-center gap-4">
+          <div className="font-medium">Industry:</div>
+          <div className="col-span-3">{selectedStartup.industry}</div>
+        </div>
+
+        <div className="grid grid-cols-4 items-center gap-4">
+          <div className="font-medium">Location:</div>
+          <div className="col-span-3">{selectedStartup.location}</div>
+        </div>
+
+        <div className="grid grid-cols-4 items-center gap-4">
+          <div className="font-medium">Team Size:</div>
+          <div className="col-span-3">{selectedStartup.teamSize} members</div>
+        </div>
+
+        <div className="grid grid-cols-4 items-center gap-4">
+          <div className="font-medium">Website:</div>
+          <div className="col-span-3">
+            <a
+              href={`https://${selectedStartup.website}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              {selectedStartup.website}
+            </a>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-4 items-center gap-4">
+          <div className="font-medium">Total Raised:</div>
+          <div className="col-span-3">{selectedStartup.totalRaised}</div>
+        </div>
+
+        <div className="grid grid-cols-4 items-center gap-4">
+          <div className="font-medium">Stage:</div>
+          <div className="col-span-3">{selectedStartup.fundingStage}</div>
+        </div>
+
+        <div className="grid grid-cols-4 items-center gap-4">
+          <div className="font-medium">Verification:</div>
+          <div className="col-span-3">
+            <Badge
+              variant={getVerificationBadgeVariant(selectedStartup.verification)}
+              className="capitalize"
+            >
+              {selectedStartup.verification}
+            </Badge>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 justify-center text-white bg-blue-500 rounded-sm px-2 py-1 mt-4">
+          <a
+            href={`https://www.onlyfounders.xyz/marketplace/project/${selectedStartup._id}`}
+            target="_blank"
+          >
+            View Startup
+          </a>
+          <ArrowUpRightSquare className="w-5 h-5" />
         </div>
       </div>
-
-      {/* Pitch Deck Section */}
-      {docs? (
-        <>        
-        <div className="flex flex-col">
-          <div className="flex items-center gap-2">
-            <p className="text-lg font-semibold">Pitch Deck Url</p>
-            <button className="cursor-pointer" onClick={() => toast("Pitch Deck URL copied to clipboard") }>
-              <CopyToClipboard text={docs.pitchDeck_Url}>
-                  <Copy className="w-5 h-5 hover:text-gray-600" />
-              </CopyToClipboard>
-            </button>
-          </div>
-          <a
-            href={docs.pitchDeck_Url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600"
-          >
-            {docs.pitchDeck_Url}
-          </a>
-        </div>
-        
-        <div className="flex flex-col">
-          <div className="flex items-center gap-2">
-            <p className="text-lg font-semibold">Pitch Deck Text</p>
-            <button className="cursor-pointer" onClick={() => toast("Pitch Deck Text Copied to clipboard") }>
-              <CopyToClipboard text={docs.pitchDeckText}>
-                  <Copy className="w-5 h-5 hover:text-gray-600" />
-              </CopyToClipboard>
-            </button>
-          </div>
-          <p>{docs.pitchDeckText}</p>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <p className="text-lg font-semibold">Pitch Deck File</p>
-          <a href={docs.pitchDeck?.file_url} target="_blank" className="bg-blue-500 px-2 py-0.5 text-white rounded-md">Download File</a>
-        </div>
-
-        <div className="flex flex-col">
-          <div className="flex items-center gap-2"> 
-            <p className="text-lg font-semibold">Pitch demo Video Url</p>
-            <button className="cursor-pointer" onClick={() => toast("Pitch demo Video URL Copied to clipboard") }>
-              <CopyToClipboard text={docs.pitchDemoVideo_Url}>
-                  <Copy className="w-5 h-5 hover:text-gray-600" />
-              </CopyToClipboard>
-            </button>
-          </div>
-          <a
-            href={docs.pitchDemoVideo_Url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600"
-          >
-            {docs.pitchDemoVideo_Url}
-          </a>
-        </div>
-
-        <div className="flex flex-col">
-          <div className="flex items-center gap-2">
-            <p className="text-lg font-semibold">Whitepaper Url</p>
-            <button className="cursor-pointer" onClick={() => toast("Whitepaper URL Copied to clipboard") }>
-              <CopyToClipboard text={docs.whitepaper_Url}>
-                  <Copy className="w-5 h-5 hover:text-gray-600" />
-              </CopyToClipboard>
-            </button>
-          </div>
-          <a
-            href={docs.whitepaper_Url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600"
-          >
-            {docs.whitepaper_Url}
-          </a>
-        </div>
-      </>
-
-      ): (
-        <div className="text-sm text-muted-foreground">
-          loading...
-        </div>
-      )}
     </div>
-  </DialogContent>
-</Dialog>
+  </div>
+)}
+
+
+{showDocs && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div
+      ref={docsModalRef}
+      className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg w-full max-w-xl p-6 border border-border overflow-y-auto max-h-[90vh] relative"
+    >
+      <button
+        onClick={() => setShowDocs(false)}
+        className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition"
+      >
+        ✕
+      </button>
+
+      <h2 className="text-xl font-semibold mb-2">Startup Documents</h2>
+
+      <div className="space-y-6 mt-4">
+        {/* Social Links Section */}
+        <div>
+          <p className="text-lg font-semibold mb-2">Social Links</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {Object.entries(docs.socialLinks || {}).map(([key, url]) =>
+              url ? (
+                <a
+                  key={key}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 hover:text-primary transition"
+                >
+                  {iconMap[key as keyof typeof iconMap]}
+                  <span className="capitalize">{key}</span>
+                </a>
+              ) : null
+            )}
+          </div>
+        </div>
+
+        {/* Pitch Deck and Other Sections */}
+        {docs ? (
+          <>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <p className="text-lg font-semibold">Pitch Deck Url</p>
+                <button
+                  className="cursor-pointer"
+                  onClick={() => toast("Pitch Deck URL copied to clipboard")}
+                >
+                  <CopyToClipboard text={docs.pitchDeck_Url}>
+                    <Copy className="w-5 h-5 hover:text-gray-600" />
+                  </CopyToClipboard>
+                </button>
+              </div>
+              <a
+                href={docs.pitchDeck_Url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600"
+              >
+                {docs.pitchDeck_Url}
+              </a>
+            </div>
+
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <p className="text-lg font-semibold">Pitch Deck Text</p>
+                <button
+                  className="cursor-pointer"
+                  onClick={() => toast("Pitch Deck Text copied to clipboard")}
+                >
+                  <CopyToClipboard text={docs.pitchDeckText}>
+                    <Copy className="w-5 h-5 hover:text-gray-600" />
+                  </CopyToClipboard>
+                </button>
+              </div>
+              <p>{docs.pitchDeckText}</p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <p className="text-lg font-semibold">Pitch Deck File</p>
+              <a
+                href={docs.pitchDeck?.file_url}
+                target="_blank"
+                className="bg-blue-500 px-2 py-0.5 text-white rounded-md"
+              >
+                Download File
+              </a>
+            </div>
+
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <p className="text-lg font-semibold">Pitch Demo Video URL</p>
+                <button
+                  className="cursor-pointer"
+                  onClick={() => toast("Pitch demo video URL copied to clipboard")}
+                >
+                  <CopyToClipboard text={docs.pitchDemoVideo_Url}>
+                    <Copy className="w-5 h-5 hover:text-gray-600" />
+                  </CopyToClipboard>
+                </button>
+              </div>
+              <a
+                href={docs.pitchDemoVideo_Url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600"
+              >
+                {docs.pitchDemoVideo_Url}
+              </a>
+            </div>
+
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <p className="text-lg font-semibold">Whitepaper URL</p>
+                <button
+                  className="cursor-pointer"
+                  onClick={() => toast("Whitepaper URL copied to clipboard")}
+                >
+                  <CopyToClipboard text={docs.whitepaper_Url}>
+                    <Copy className="w-5 h-5 hover:text-gray-600" />
+                  </CopyToClipboard>
+                </button>
+              </div>
+              <a
+                href={docs.whitepaper_Url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600"
+              >
+                {docs.whitepaper_Url}
+              </a>
+            </div>
+          </>
+        ) : (
+          <div className="text-sm text-muted-foreground">Loading...</div>
+        )}
+      </div>
+    </div>
+  </div>
+)}
+
     </>
   );
 }

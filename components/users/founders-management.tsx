@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Table,
   TableBody,
@@ -72,6 +72,22 @@ export function FoundersManagement() {
 
   const API_URL =
     "https://onlyfounders.azurewebsites.net/api/admin/profiles/Founder";
+
+    const founderModalRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (founderModalRef.current && !founderModalRef.current.contains(event.target as Node)) {
+          setShowProfile(false);
+        }
+      };
+
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }, []);
+
 
   useEffect(() => {
     const fetchFounders = async () => {
@@ -317,73 +333,103 @@ export function FoundersManagement() {
       </div>
 
       {/* Founder Profile Dialog */}
-      {selectedFounder && (
-        <Dialog open={showProfile} onOpenChange={setShowProfile}>
-          <DialogContent className="sm:max-w-[600px] border border-border">
-            <DialogHeader>
-              <DialogTitle>Founder Profile</DialogTitle>
-              <DialogDescription>
-                Detailed Documentation for {selectedFounder.username}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Name:</div>
-                <div className="col-span-3">{selectedFounder.username}</div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Title: </div>
-                <div className="col-span-3">{selectedFounder.professionalTitle}</div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Email:</div>
-                <div className="col-span-3"><a href={`mailto:${selectedFounder.email}`} className="text-blue-600" target="_blank">{selectedFounder.email}</a></div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Twitter: </div>
-                <div className="col-span-3"><a className="text-blue-600" href={selectedFounder.founderData?.socialLinks?.Twitter} target="_blank">{selectedFounder.founderData?.socialLinks?.Twitter}</a></div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Joined:</div>
-                <div className="col-span-3">
-                  {formatDate(selectedFounder.createdAt)}
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Bio:</div>
-                <div className="col-span-3">
-                  {selectedFounder.bio ?? "-"}
-                </div>
-              </div>
-              {/* <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Total Raised:</div>
-                <div className="col-span-3">
-                  {selectedFounder.totalRaised ?? "-"}
-                </div>
-              </div> */}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Status:</div>
-                <div className="col-span-3">
-                  <Badge
-                    variant={
-                      selectedFounder.status === "verified"
-                        ? "outline"
-                        : "destructive"
-                    }
-                    className="capitalize"
-                  >
-                    {selectedFounder.status}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-            <div className={`${selectedFounder.startup_id == null? "hidden" : "block"}`}>
-              <a href={`https://www.onlyfounders.xyz/marketplace/project/${selectedFounder.startup_id}`} target="_blank" className="text-white px-2 py-1 rounded-md bg-blue-500">View Startup</a>
-            </div>
+      {showProfile && selectedFounder && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div
+      ref={founderModalRef}
+      className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg w-full max-w-xl p-6 border border-border overflow-y-auto max-h-[90vh] relative"
+    >
+      <button
+        onClick={() => setShowProfile(false)}
+        className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition"
+      >
+        ✕
+      </button>
 
-          </DialogContent>
-        </Dialog>
+      <h2 className="text-xl font-semibold mb-2">Founder Profile</h2>
+      <p className="text-muted-foreground mb-4">
+        Detailed documentation for {selectedFounder.username}
+      </p>
+
+      <div className="grid gap-4">
+        <div className="grid grid-cols-4 items-center gap-4">
+          <div className="font-medium">Name:</div>
+          <div className="col-span-3">{selectedFounder.username}</div>
+        </div>
+
+        <div className="grid grid-cols-4 items-center gap-4">
+          <div className="font-medium">Title:</div>
+          <div className="col-span-3">{selectedFounder.professionalTitle}</div>
+        </div>
+
+        <div className="grid grid-cols-4 items-center gap-4">
+          <div className="font-medium">Email:</div>
+          <div className="col-span-3">
+            <a
+              href={`mailto:${selectedFounder.email}`}
+              target="_blank"
+              className="text-blue-600"
+            >
+              {selectedFounder.email}
+            </a>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-4 items-center gap-4">
+          <div className="font-medium">Twitter:</div>
+          <div className="col-span-3">
+            <a
+              className="text-blue-600"
+              href={selectedFounder.founderData?.socialLinks?.Twitter}
+              target="_blank"
+            >
+              {selectedFounder.founderData?.socialLinks?.Twitter}
+            </a>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-4 items-center gap-4">
+          <div className="font-medium">Joined:</div>
+          <div className="col-span-3">{formatDate(selectedFounder.createdAt)}</div>
+        </div>
+
+        <div className="grid grid-cols-4 items-center gap-4">
+          <div className="font-medium">Bio:</div>
+          <div className="col-span-3">{selectedFounder.bio ?? "-"}</div>
+        </div>
+
+        <div className="grid grid-cols-4 items-center gap-4">
+          <div className="font-medium">Status:</div>
+          <div className="col-span-3">
+            <Badge
+              variant={
+                selectedFounder.status === "verified"
+                  ? "outline"
+                  : "destructive"
+              }
+              className="capitalize"
+            >
+              {selectedFounder.status}
+            </Badge>
+          </div>
+        </div>
+      </div>
+
+      {selectedFounder.startup_id && (
+        <div className="mt-4">
+          <a
+            href={`https://www.onlyfounders.xyz/marketplace/project/${selectedFounder.startup_id}`}
+            target="_blank"
+            className="text-white px-2 py-1 rounded-md bg-blue-500"
+          >
+            View Startup
+          </a>
+        </div>
       )}
+    </div>
+  </div>
+)}
+
     </>
   );
 }

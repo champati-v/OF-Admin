@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   DropdownMenu,
@@ -60,6 +60,25 @@ export function ServiceProvidersManagement() {
   const [error, setError] = useState<string | null>(null)
   const [selectedProvider, setSelectedProvider] = useState<ServiceProvider | null>(null)
   const [showProfile, setShowProfile] = useState(false)
+
+  const providerModalRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (
+          providerModalRef.current &&
+          !providerModalRef.current.contains(event.target as Node)
+        ) {
+          setShowProfile(false);
+        }
+      };
+
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }, []);
+
 
   useEffect(() => {
     const fetchServiceProviders = async () => {
@@ -278,116 +297,141 @@ export function ServiceProvidersManagement() {
       </div>
 
       {/* Service Provider Profile Dialog */}
-      {selectedProvider && (
-        <Dialog open={showProfile} onOpenChange={setShowProfile}>
-          <DialogContent className="sm:max-w-screen-sm max-h-screen overflow-y-auto border border-border">
-            <DialogHeader>
-              <DialogTitle>Service Provider Profile</DialogTitle>
-              <DialogDescription>Profile details for {selectedProvider.username}</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4">
-              {selectedProvider.profilePic && (
-                <div className="flex justify-center">
-                  <img
-                    src={selectedProvider.profilePic.file_url || "/placeholder.svg"}
-                    alt={`${selectedProvider.username}'s profile`}
-                    className="w-24 h-24 rounded-full object-cover border-2 border-border"
-                  />
-                </div>
-              )}
+     {showProfile && selectedProvider && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div
+          ref={providerModalRef}
+          className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg w-full max-w-screen-sm p-6 border border-border overflow-y-auto max-h-screen relative"
+        >
+          <button
+            onClick={() => setShowProfile(false)}
+            className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition"
+          >
+            ✕
+          </button>
 
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Name:</div>
-                <div className="col-span-3">{selectedProvider.username}</div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Email:</div>
-                <div className="col-span-3">{selectedProvider.email}</div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">User ID:</div>
-                <div className="col-span-3">{selectedProvider.user_id}</div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Joined:</div>
-                <div className="col-span-3">{formatDate(selectedProvider.createdAt)}</div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Status:</div>
-                <div className="col-span-3">
-                  <Badge
-                    variant={
-                      selectedProvider.status?.toLowerCase() === "suspended" || selectedProvider.status?.toLowerCase() === "blocked"
-                        ? "destructive"
-                        : "outline"
-                    }
-                    className="capitalize"
-                  >
-                    {selectedProvider.status}
-                  </Badge>
-                </div>
-              </div>
+          <h2 className="text-xl font-semibold mb-2">Service Provider Profile</h2>
+          <p className="text-muted-foreground mb-4">
+            Profile details for {selectedProvider.username}
+          </p>
 
-              {selectedProvider.professionalTitle && (
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <div className="font-medium">Title:</div>
-                  <div className="col-span-3">{selectedProvider.professionalTitle}</div>
-                </div>
-              )}
+          <div className="grid gap-4">
+            {selectedProvider.profilePic && (
+              <div className="flex justify-center">
+                <img
+                  src={selectedProvider.profilePic.file_url || "/placeholder.svg"}
+                  alt={`${selectedProvider.username}'s profile`}
+                  className="w-24 h-24 rounded-full object-cover border-2 border-border"
+                />
+              </div>
+            )}
 
-              {selectedProvider.location && (
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <div className="font-medium">Location:</div>
-                  <div className="col-span-3">{selectedProvider.location}</div>
-                </div>
-              )}
-
-              {selectedProvider.bio && (
-                <div className="grid grid-cols-4 items-start gap-4">
-                  <div className="font-medium">Bio:</div>
-                  <div className="col-span-3">{selectedProvider.bio}</div>
-                </div>
-              )}
-
-              {selectedProvider.serviceProviderData && (
-                <div className="mt-1">
-                  <h3 className="text-lg font-medium mb-2">Service Details</h3>
-                  <div className="rounded-md border border-border p-4">
-                    {selectedProvider.serviceProviderData.buisnessName && (
-                      <div className="mb-2">
-                        <span className="font-medium">Business Name:</span>{" "}
-                        {selectedProvider.serviceProviderData.buisnessName}
-                      </div>
-                    )}
-                    {selectedProvider.serviceProviderData.category && (
-                      <div className="mb-2">
-                        <span className="font-medium">Category:</span> {selectedProvider.serviceProviderData.category}
-                      </div>
-                    )}
-                    {selectedProvider.serviceProviderData.pricingModel && (
-                      <div className="mb-2">
-                        <span className="font-medium">Pricing Model:</span>{" "}
-                        {selectedProvider.serviceProviderData.pricingModel}
-                      </div>
-                    )}
-                    {selectedProvider.serviceProviderData.serviceDescription && (
-                      <div className="mb-2">
-                        <span className="font-medium">Service Description:</span>{" "}
-                        {selectedProvider.serviceProviderData.serviceDescription}
-                      </div>
-                    )}
-                    {selectedProvider.serviceProviderData.websiteUrl && (
-                      <div className="mb-2">
-                        <span className="font-medium">Website:</span> {selectedProvider.serviceProviderData.websiteUrl}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <div className="font-medium">Name:</div>
+              <div className="col-span-3">{selectedProvider.username}</div>
             </div>
-          </DialogContent>
-        </Dialog>
-      )}
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <div className="font-medium">Email:</div>
+              <div className="col-span-3">{selectedProvider.email}</div>
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <div className="font-medium">User ID:</div>
+              <div className="col-span-3">{selectedProvider.user_id}</div>
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <div className="font-medium">Joined:</div>
+              <div className="col-span-3">{formatDate(selectedProvider.createdAt)}</div>
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <div className="font-medium">Status:</div>
+              <div className="col-span-3">
+                <Badge
+                  variant={
+                    selectedProvider.status?.toLowerCase() === "suspended" ||
+                    selectedProvider.status?.toLowerCase() === "blocked"
+                      ? "destructive"
+                      : "outline"
+                  }
+                  className="capitalize"
+                >
+                  {selectedProvider.status}
+                </Badge>
+              </div>
+            </div>
+
+            {selectedProvider.professionalTitle && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <div className="font-medium">Title:</div>
+                <div className="col-span-3">{selectedProvider.professionalTitle}</div>
+              </div>
+            )}
+
+            {selectedProvider.location && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <div className="font-medium">Location:</div>
+                <div className="col-span-3">{selectedProvider.location}</div>
+              </div>
+            )}
+
+            {selectedProvider.bio && (
+              <div className="grid grid-cols-4 items-start gap-4">
+                <div className="font-medium">Bio:</div>
+                <div className="col-span-3">{selectedProvider.bio}</div>
+              </div>
+            )}
+
+            {selectedProvider.serviceProviderData && (
+              <div className="mt-2">
+                <h3 className="text-lg font-medium mb-2">Service Details</h3>
+                <div className="rounded-md border border-border p-4 space-y-2">
+                  {selectedProvider.serviceProviderData.buisnessName && (
+                    <div>
+                      <span className="font-medium">Business Name:</span>{" "}
+                      {selectedProvider.serviceProviderData.buisnessName}
+                    </div>
+                  )}
+                  {selectedProvider.serviceProviderData.category && (
+                    <div>
+                      <span className="font-medium">Category:</span>{" "}
+                      {selectedProvider.serviceProviderData.category}
+                    </div>
+                  )}
+                  {selectedProvider.serviceProviderData.pricingModel && (
+                    <div>
+                      <span className="font-medium">Pricing Model:</span>{" "}
+                      {selectedProvider.serviceProviderData.pricingModel}
+                    </div>
+                  )}
+                  {selectedProvider.serviceProviderData.serviceDescription && (
+                    <div>
+                      <span className="font-medium">Service Description:</span>{" "}
+                      {selectedProvider.serviceProviderData.serviceDescription}
+                    </div>
+                  )}
+                  {selectedProvider.serviceProviderData.websiteUrl && (
+                    <div>
+                      <span className="font-medium">Website:</span>{" "}
+                      <a
+                        href={selectedProvider.serviceProviderData.websiteUrl}
+                        className="text-blue-600"
+                        target="_blank"
+                      >
+                        {selectedProvider.serviceProviderData.websiteUrl}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+)}
+
     </>
   )
 }

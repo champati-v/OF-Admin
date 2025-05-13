@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import Link from "next/link"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -62,7 +62,7 @@ type Campaign = {
   createdDate: string
   campaign_id?: string // Added for API compatibility
   fundraisingEndDate: string // Renamed from endingDate to be more specific
-  status: "Active" | "Completed" | "Pending" // Removed "Failed" status
+  status: "Active" | "Completed" | "Pending" | "Rejected" // Removed "Failed" status
   approvalStatus?: "pending" | "approved" | "rejected"
   targetAmount: string
   raisedAmount: string
@@ -729,7 +729,7 @@ export function CampaignManagement() {
   const [campaignToBlock, setCampaignToBlock] = useState<Campaign | null>(null)
 
   // Add new state variables for approval functionality
-  const [activeTab, setActiveTab] = useState<"pending" | "live" | "completed">("pending")
+  const [activeTab, setActiveTab] = useState<"pending" | "live" | "completed" | "rejected">("pending")
   const [showApproveAlert, setShowApproveAlert] = useState(false)
   const [campaignToApprove, setCampaignToApprove] = useState<Campaign | null>(null)
 
@@ -749,6 +749,134 @@ export function CampaignManagement() {
   // Add these state variables after the other state declarations in the CampaignManagement component
   const [isLoading, setIsLoading] = useState(false)
   const [apiCampaigns, setApiCampaigns] = useState<any[]>([])
+
+  const campaignModalRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (
+          campaignModalRef.current &&
+          !campaignModalRef.current.contains(event.target as Node)
+        ) {
+          setShowDetails(false);
+        }
+      };
+
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }, []);
+
+
+    const alertRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (
+          alertRef.current &&
+          !alertRef.current.contains(event.target as Node)
+        ) {
+          setShowFeaturedAlert(false);
+        }
+      };
+
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }, []);
+
+    const trendingAlertRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (
+          trendingAlertRef.current &&
+          !trendingAlertRef.current.contains(event.target as Node)
+        ) {
+          setShowTrendingAlert(false);
+        }
+      };
+
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }, []);
+
+    const blockAlertRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (
+          blockAlertRef.current &&
+          !blockAlertRef.current.contains(event.target as Node)
+        ) {
+          setShowBlockAlert(false);
+        }
+      };
+
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }, []);
+
+    const approveAlertRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (
+          approveAlertRef.current &&
+          !approveAlertRef.current.contains(event.target as Node)
+        ) {
+          setShowApproveAlert(false);
+        }
+      };
+
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }, []);
+
+    const rejectDialogRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (
+          rejectDialogRef.current &&
+          !rejectDialogRef.current.contains(event.target as Node)
+        ) {
+          setShowRejectDialog(false);
+        }
+      };
+
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }, []);
+
+    const milestoneRejectRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (
+          milestoneRejectRef.current &&
+          !milestoneRejectRef.current.contains(event.target as Node)
+        ) {
+          setShowMilestoneRejectDialog(false);
+        }
+      };
+
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }, []);
+
 
   // Add this useEffect hook after the state declarations and before the useMemo hooks
   useEffect(() => {
@@ -836,8 +964,8 @@ export function CampaignManagement() {
     return allCampaigns.filter((campaign) => campaign.approvalStatus === "approved" && campaign.status === "Completed")
   }, [allCampaigns])
 
-  const rejectedCampaignsCount = useMemo(() => {
-    return allCampaigns.filter((campaign) => campaign.approvalStatus === "rejected").length
+  const rejectedCampaigns = useMemo(() => {
+    return allCampaigns.filter((campaign) => campaign.approvalStatus === "approved" && campaign.status === "Rejected")
   }, [allCampaigns])
 
   // Get the current campaigns based on active tab
@@ -849,6 +977,8 @@ export function CampaignManagement() {
         return liveCampaigns
       case "completed":
         return completedCampaigns
+      case "rejected":
+       return rejectedCampaigns
       default:
         return pendingApprovalCampaigns
     }
@@ -863,6 +993,12 @@ export function CampaignManagement() {
       month: "short",
       day: "numeric",
     })
+  }
+
+  const handleViewCampaign = () => {
+    if (selectedCampaign) {
+      window.open(`https://www.onlyfounders.xyz/campaign/campaigns/${selectedCampaign.id}`, "_blank");
+    }
   }
 
   const handleViewDetails = (campaign: Campaign) => {
@@ -1165,6 +1301,17 @@ export function CampaignManagement() {
           >
             Completed Fundraising ({completedCampaigns.length})
           </button>
+          <button
+            className={`px-4 py-2 rounded-md text-sm font-medium ${
+              activeTab === "rejected" ? "bg-white text-black shadow-sm" : "text-gray-500 hover:text-gray-700"
+            }`}
+            onClick={() => {
+              setActiveTab("rejected")
+              setCurrentPage(1)
+            }}
+          >
+            Rejected Fundraising ({rejectedCampaigns.length})
+          </button>
         </div>
       </div>
 
@@ -1297,6 +1444,26 @@ export function CampaignManagement() {
                               Reject Campaign
                             </DropdownMenuItem>
                           </>
+                        ) : activeTab === 'rejected' ? (
+                          <>
+                            <DropdownMenuItem
+                              onClick={() => handleApproveCampaign(campaign)}
+                              className="text-green-500"
+                            >
+                              <CheckCircle2 className="mr-2 h-4 w-4" />
+                              Approve Campaign
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleViewDetails(campaign)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Campaign
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => router.push(`/admin/dashboard/campaigns/${campaign.id}/investors`)}
+                            >
+                              <DollarSign className="mr-2 h-4 w-4" />
+                              Investment
+                            </DropdownMenuItem>
+                          </>
                         ) : (
                           <>
                             <DropdownMenuItem onClick={() => handleViewDetails(campaign)}>
@@ -1319,44 +1486,6 @@ export function CampaignManagement() {
                                 Review {campaign.pendingProofs} Pending Proof{campaign.pendingProofs > 1 ? "s" : ""}
                               </DropdownMenuItem>
                             )}
-
-                            <DropdownMenuSeparator />
-
-                            {/* Featured option */}
-                            <DropdownMenuItem
-                              onClick={() => handleToggleFeatured(campaign)}
-                              className={campaign.isFeatured ? "text-red-500" : "text-green-500"}
-                            >
-                              <Star className="mr-2 h-4 w-4" />
-                              {campaign.isFeatured ? "Remove from Featured" : "Add to Featured"}
-                            </DropdownMenuItem>
-
-                            {/* Trending option */}
-                            <DropdownMenuItem
-                              onClick={() => handleToggleTrending(campaign)}
-                              className={campaign.isTrending ? "text-red-500" : "text-green-500"}
-                            >
-                              <TrendingUp className="mr-2 h-4 w-4" />
-                              {campaign.isTrending ? "Remove from Trending" : "Add to Trending"}
-                            </DropdownMenuItem>
-
-                            {/* Block/Unblock option */}
-                            <DropdownMenuItem
-                              onClick={() => handleToggleBlocked(campaign)}
-                              className={campaign.isBlocked ? "text-green-500" : "text-red-500"}
-                            >
-                              {campaign.isBlocked ? (
-                                <>
-                                  <CheckCircle className="mr-2 h-4 w-4" />
-                                  Unblock Campaign
-                                </>
-                              ) : (
-                                <>
-                                  <Ban className="mr-2 h-4 w-4" />
-                                  Block Campaign
-                                </>
-                              )}
-                            </DropdownMenuItem>
                           </>
                         )}
                       </DropdownMenuContent>
@@ -1391,366 +1520,450 @@ export function CampaignManagement() {
       </PaginationContent>
 
       {/* Campaign Details Dialog */}
-      {selectedCampaign && (
-        <Dialog open={showDetails} onOpenChange={setShowDetails}>
-          <DialogPortal>
-            <DialogContent className="sm:max-w-[700px] border border-border max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Campaign Details</DialogTitle>
-                <DialogDescription>Detailed information about {selectedCampaign.name}</DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <div className="font-medium">Campaign:</div>
-                  <div className="col-span-3 flex items-center">
-                    {selectedCampaign.name}
-                    {selectedCampaign.isFeatured && <Star className="h-4 w-4 text-primary ml-2" />}
-                    {selectedCampaign.isTrending && <TrendingUp className="h-4 w-4 text-primary ml-2" />}
-                  </div>
+      {showDetails && selectedCampaign && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div
+            ref={campaignModalRef}
+            className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg w-full max-w-[700px] p-6 border border-border overflow-y-auto max-h-[90vh] relative"
+          >
+            <button
+              onClick={() => setShowDetails(false)}
+              className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition"
+            >
+              ✕
+            </button>
+
+            <h2 className="text-xl font-semibold mb-2">Campaign Details</h2>
+            <p className="text-muted-foreground mb-4">
+              Detailed information about {selectedCampaign.name}
+            </p>
+
+            <div className="grid gap-4">
+              {/* Campaign Name */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <div className="font-medium">Campaign:</div>
+                <div className="col-span-3 flex items-center">
+                  {selectedCampaign.name}
+                  {selectedCampaign.isFeatured && (
+                    <Star className="h-4 w-4 text-primary ml-2" />
+                  )}
+                  {selectedCampaign.isTrending && (
+                    <TrendingUp className="h-4 w-4 text-primary ml-2" />
+                  )}
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <div className="font-medium">Founder:</div>
-                  <div className="col-span-3">
-                    <Link
-                      href={`/admin/dashboard/users?founder=${selectedCampaign.founder.id}`}
-                      className="text-primary hover:underline"
-                    >
-                      {selectedCampaign.founder.name}
-                    </Link>
-                  </div>
+              </div>
+
+              {/* Founder */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <div className="font-medium">Founder:</div>
+                <div className="col-span-3">
+                  <Link
+                    href={`/admin/dashboard/users?founder=${selectedCampaign.founder.id}`}
+                    className="text-primary hover:underline"
+                  >
+                    {selectedCampaign.founder.name}
+                  </Link>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <div className="font-medium">Startup:</div>
-                  <div className="col-span-3">
-                    <Link
-                      href={`/admin/dashboard/marketplace?startup=${selectedCampaign.startup.id}`}
-                      className="text-primary hover:underline"
-                    >
-                      {selectedCampaign.startup.name}
-                    </Link>
-                    <div className="text-xs text-muted-foreground">{selectedCampaign.startup.stage}</div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <div className="font-medium">Created Date:</div>
-                  <div className="col-span-3">{formatDate(selectedCampaign.createdDate)}</div>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <div className="font-medium">Fundraising End Date:</div>
-                  <div className="col-span-3">{formatDate(selectedCampaign.fundraisingEndDate)}</div>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <div className="font-medium">Status:</div>
-                  <div className="col-span-3">
-                    <Badge variant={getStatusBadgeVariant(selectedCampaign.status)} className="capitalize">
-                      {selectedCampaign.status}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <div className="font-medium">Fundraising:</div>
-                  <div className="col-span-3">
-                    {selectedCampaign.raisedAmount} / {selectedCampaign.targetAmount} (
-                    {calculateProgress(selectedCampaign.raisedAmount, selectedCampaign.targetAmount)}%)
-                  </div>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <div className="font-medium">Milestones:</div>
-                  <div className="col-span-3">
-                    {selectedCampaign.completedMilestones}/{selectedCampaign.milestoneCount} completed
-                    {selectedCampaign.pendingProofs > 0 && (
-                      <Badge variant="outline" className="ml-2 bg-amber-100 text-amber-800 border-amber-200">
-                        {selectedCampaign.pendingProofs} Pending Proof{selectedCampaign.pendingProofs > 1 ? "s" : ""}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <div className="font-medium">Description:</div>
-                  <div className="col-span-3">{selectedCampaign.description}</div>
-                </div>
-                <div className="grid gap-4 py-4">
-                  <h3 className="text-lg font-semibold">Milestones</h3>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Milestones can be verified and funds released at any time, regardless of fundraising status.
-                  </p>
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Title</TableHead>
-                          <TableHead>Description</TableHead>
-                          <TableHead>Target Date</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="w-[100px]">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {selectedCampaign.milestones.map((milestone, index) => (
-                          <TableRow key={index}>
-                            <TableCell>{milestone.title}</TableCell>
-                            <TableCell>{milestone.description}</TableCell>
-                            <TableCell>{formatDate(milestone.targetDate)}</TableCell>
-                            <TableCell>
-                              <Badge variant="secondary" className="capitalize">
-                                {milestone.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              {milestone.status === "In Progress" && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 px-2 text-red-500 hover:bg-red-50"
-                                  onClick={() => handleRejectMilestone(selectedCampaign, index)}
-                                >
-                                  <XCircle className="h-3 w-3 mr-1" />
-                                  Reject
-                                </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+              </div>
+
+              {/* Startup */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <div className="font-medium">Startup:</div>
+                <div className="col-span-3">
+                  <Link
+                    href={`/admin/dashboard/marketplace?startup=${selectedCampaign.startup.id}`}
+                    className="text-primary hover:underline"
+                  >
+                    {selectedCampaign.startup.name}
+                  </Link>
+                  <div className="text-xs text-muted-foreground">
+                    {selectedCampaign.startup.stage}
                   </div>
                 </div>
               </div>
-            </DialogContent>
-          </DialogPortal>
-        </Dialog>
+
+              {/* Created and Fundraising Dates */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <div className="font-medium">Created Date:</div>
+                <div className="col-span-3">{formatDate(selectedCampaign.createdDate)}</div>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <div className="font-medium">Fundraising End Date:</div>
+                <div className="col-span-3">{formatDate(selectedCampaign.fundraisingEndDate)}</div>
+              </div>
+
+              {/* Status */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <div className="font-medium">Status:</div>
+                <div className="col-span-3">
+                  <Badge
+                    variant={getStatusBadgeVariant(selectedCampaign.status)}
+                    className="capitalize"
+                  >
+                    {selectedCampaign.status}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Fundraising */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <div className="font-medium">Fundraising:</div>
+                <div className="col-span-3">
+                  {selectedCampaign.raisedAmount} / {selectedCampaign.targetAmount} (
+                  {calculateProgress(
+                    selectedCampaign.raisedAmount,
+                    selectedCampaign.targetAmount
+                  )}
+                  %)
+                </div>
+              </div>
+
+              {/* Milestones Count */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <div className="font-medium">Milestones:</div>
+                <div className="col-span-3">
+                  {selectedCampaign.completedMilestones}/{selectedCampaign.milestoneCount} completed
+                  {selectedCampaign.pendingProofs > 0 && (
+                    <Badge
+                      variant="outline"
+                      className="ml-2 bg-amber-100 text-amber-800 border-amber-200"
+                    >
+                      {selectedCampaign.pendingProofs} Pending Proof
+                      {selectedCampaign.pendingProofs > 1 ? "s" : ""}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <div className="font-medium">Description:</div>
+                <div className="col-span-3">{selectedCampaign.description}</div>
+              </div>
+
+              <button className="bg-blue-500 px-2 py-1 text-white cursor-pointer rounded-md" onClick={() => handleViewCampaign()} >View Campaign</button>
+            </div>
+          </div>
+        </div>
       )}
 
+
       {/* Featured Confirmation Dialog */}
-      <AlertDialog
-        open={showFeaturedAlert}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {campaignToFeature?.isFeatured ? "Remove from Featured" : "Add to Featured"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {campaignToFeature?.isFeatured
+      {showFeaturedAlert && campaignToFeature && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div
+            ref={alertRef}
+            className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg w-full max-w-md p-6 border border-border relative"
+          >
+            <button
+              onClick={() => setShowFeaturedAlert(false)}
+              className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition"
+            >
+              ✕
+            </button>
+
+            <h2 className="text-xl font-semibold mb-2">
+              {campaignToFeature.isFeatured ? "Remove from Featured" : "Add to Featured"}
+            </h2>
+
+            <p className="text-muted-foreground mb-4">
+              {campaignToFeature.isFeatured
                 ? "Are you sure you want to remove this campaign from featured? It will no longer appear in the featured section."
                 : "Are you sure you want to add this campaign to featured? It will appear in the featured section."}
-              {campaignToFeature && (
-                <div className="mt-2 p-3 bg-muted rounded-md">
-                  <div className="font-medium">Campaign: {campaignToFeature.name}</div>
-                  <div className="font-medium">Startup: {campaignToFeature.startup.name}</div>
-                </div>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmToggleFeatured}>
-              {campaignToFeature?.isFeatured ? "Remove from Featured" : "Add to Featured"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </p>
+
+            <div className="mt-2 p-3 bg-muted rounded-md text-sm space-y-1">
+              <div className="font-medium">Campaign: {campaignToFeature.name}</div>
+              <div className="font-medium">Startup: {campaignToFeature.startup.name}</div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                onClick={() => setShowFeaturedAlert(false)}
+                className="px-4 py-2 rounded-md text-sm bg-zinc-200 dark:bg-zinc-700 text-black dark:text-white hover:bg-zinc-300 dark:hover:bg-zinc-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmToggleFeatured}
+                className="px-4 py-2 rounded-md text-sm bg-primary text-white hover:bg-primary/90"
+              >
+                {campaignToFeature.isFeatured ? "Remove from Featured" : "Add to Featured"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* Trending Confirmation Dialog */}
-      <AlertDialog
-        open={showTrendingAlert}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {campaignToTrend?.isTrending ? "Remove from Trending" : "Add to Trending"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {campaignToTrend?.isTrending
-                ? "Are you sure you want to remove this campaign from trending? It will no longer appear in the trending section."
-                : "Are you sure you want to add this campaign to trending? It will appear in the trending section."}
-              {campaignToTrend && (
-                <div className="mt-2 p-3 bg-muted rounded-md">
-                  <div className="font-medium">Campaign: {campaignToTrend.name}</div>
-                  <div className="font-medium">Startup: {campaignToTrend.startup.name}</div>
-                </div>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmToggleTrending}>
-              {campaignToTrend?.isTrending ? "Remove from Trending" : "Add to Trending"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {showTrendingAlert && campaignToTrend && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div
+          ref={trendingAlertRef}
+          className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg w-full max-w-md p-6 border border-border relative"
+        >
+          <button
+            onClick={() => setShowTrendingAlert(false)}
+            className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition"
+          >
+            ✕
+          </button>
+
+          <h2 className="text-xl font-semibold mb-2">
+            {campaignToTrend.isTrending ? "Remove from Trending" : "Add to Trending"}
+          </h2>
+
+          <p className="text-muted-foreground mb-4">
+            {campaignToTrend.isTrending
+              ? "Are you sure you want to remove this campaign from trending? It will no longer appear in the trending section."
+              : "Are you sure you want to add this campaign to trending? It will appear in the trending section."}
+          </p>
+
+          <div className="mt-2 p-3 bg-muted rounded-md text-sm space-y-1">
+            <div className="font-medium">Campaign: {campaignToTrend.name}</div>
+            <div className="font-medium">Startup: {campaignToTrend.startup.name}</div>
+          </div>
+
+          <div className="mt-6 flex justify-end gap-2">
+            <button
+              onClick={() => setShowTrendingAlert(false)}
+              className="px-4 py-2 rounded-md text-sm bg-zinc-200 dark:bg-zinc-700 text-black dark:text-white hover:bg-zinc-300 dark:hover:bg-zinc-600"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmToggleTrending}
+              className="px-4 py-2 rounded-md text-sm bg-primary text-white hover:bg-primary/90"
+            >
+              {campaignToTrend.isTrending ? "Remove from Trending" : "Add to Trending"}
+            </button>
+          </div>
+        </div>
+      </div>
+      )}
+
 
       {/* Block/Unblock Confirmation Dialog */}
-      <AlertDialog
-        open={showBlockAlert}
+      {showBlockAlert && campaignToBlock && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div
+      ref={blockAlertRef}
+      className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg w-full max-w-md p-6 border border-border relative"
+    >
+      <button
+        onClick={() => setShowBlockAlert(false)}
+        className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition"
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{campaignToBlock?.isBlocked ? "Unblock Campaign" : "Block Campaign"}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {campaignToBlock?.isBlocked
-                ? "Are you sure you want to unblock this campaign? It will be visible on the platform again."
-                : "Are you sure you want to block this campaign? It will be hidden from the platform."}
-              {campaignToBlock && (
-                <div className="mt-2 p-3 bg-muted rounded-md">
-                  <div className="font-medium">Campaign: {campaignToBlock.name}</div>
-                  <div className="font-medium">Startup: {campaignToBlock.startup.name}</div>
-                </div>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmToggleBlocked}
-              className={campaignToBlock?.isBlocked ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"}
-            >
-              {campaignToBlock?.isBlocked ? "Unblock" : "Block"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        ✕
+      </button>
+
+      <h2 className="text-xl font-semibold mb-2">
+        {campaignToBlock.isBlocked ? "Unblock Campaign" : "Block Campaign"}
+      </h2>
+
+      <p className="text-muted-foreground mb-4">
+        {campaignToBlock.isBlocked
+          ? "Are you sure you want to unblock this campaign? It will be visible on the platform again."
+          : "Are you sure you want to block this campaign? It will be hidden from the platform."}
+      </p>
+
+      <div className="mt-2 p-3 bg-muted rounded-md text-sm space-y-1">
+        <div className="font-medium">Campaign: {campaignToBlock.name}</div>
+        <div className="font-medium">Startup: {campaignToBlock.startup.name}</div>
+      </div>
+
+      <div className="mt-6 flex justify-end gap-2">
+        <button
+          onClick={() => setShowBlockAlert(false)}
+          className="px-4 py-2 rounded-md text-sm bg-zinc-200 dark:bg-zinc-700 text-black dark:text-white hover:bg-zinc-300 dark:hover:bg-zinc-600"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={confirmToggleBlocked}
+          className={`px-4 py-2 rounded-md text-sm text-white ${
+            campaignToBlock.isBlocked
+              ? "bg-green-500 hover:bg-green-600"
+              : "bg-red-500 hover:bg-red-600"
+          }`}
+        >
+          {campaignToBlock.isBlocked ? "Unblock" : "Block"}
+        </button>
+      </div>
+    </div>
+  </div>
+      )}
+
 
       {/* Approve Campaign Confirmation Dialog */}
-      <AlertDialog
-        open={showApproveAlert}
-        onOpenChange={(open) => {
-          setShowApproveAlert(open)
-          if (!open) {
-            setTimeout(() => {
-              if (!open && campaignToApprove) {
-                setCampaignToApprove(null)
-              }
-            }, 100)
-          }
-        }}
+      {showApproveAlert && campaignToApprove && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div
+      ref={approveAlertRef}
+      className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg w-full max-w-md p-6 border border-border relative"
+    >
+      <button
+        onClick={() => setShowApproveAlert(false)}
+        className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition"
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Approve Campaign</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to approve this campaign? Once approved, it will be visible to investors on the
-              platform.
-              {campaignToApprove && (
-                <div className="mt-2 p-3 bg-muted rounded-md">
-                  <div className="font-medium">Campaign: {campaignToApprove.name}</div>
-                  <div className="font-medium">Startup: {campaignToApprove.startup.name}</div>
-                  <div className="font-medium">Target: {campaignToApprove.targetAmount}</div>
-                </div>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmApproveCampaign} className="bg-green-500 hover:bg-green-600">
-              Approve Campaign
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        ✕
+      </button>
+
+      <h2 className="text-xl font-semibold mb-2">Approve Campaign</h2>
+
+      <p className="text-muted-foreground mb-4">
+        Are you sure you want to approve this campaign? Once approved, it will be visible to investors on the
+        platform.
+      </p>
+
+      <div className="mt-2 p-3 bg-muted rounded-md text-sm space-y-1">
+        <div className="font-medium">Campaign: {campaignToApprove.name}</div>
+        <div className="font-medium">Startup: {campaignToApprove.startup.name}</div>
+        <div className="font-medium">Target: {campaignToApprove.targetAmount}</div>
+      </div>
+
+      <div className="mt-6 flex justify-end gap-2">
+        <button
+          onClick={() => setShowApproveAlert(false)}
+          className="px-4 py-2 rounded-md text-sm bg-zinc-200 dark:bg-zinc-700 text-black dark:text-white hover:bg-zinc-300 dark:hover:bg-zinc-600"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={confirmApproveCampaign}
+          className="px-4 py-2 rounded-md text-sm bg-green-500 hover:bg-green-600 text-white"
+        >
+          Approve Campaign
+        </button>
+      </div>
+    </div>
+  </div>
+      )}
+
 
       {/* Campaign Rejection Dialog with Reason */}
-      <Dialog
-        open={showRejectDialog}
+      {showRejectDialog && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div
+      ref={rejectDialogRef}
+      className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg w-full max-w-md p-6 border border-border overflow-y-auto max-h-[90vh] relative"
+    >
+      <button
+        onClick={() => setShowRejectDialog(false)}
+        className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition"
       >
-        <DialogPortal>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Reject Campaign</AlertDialogTitle>
-              <AlertDialogDescription>
-                Please provide a reason for rejecting this campaign. This will be sent to the founder via email.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
+        ✕
+      </button>
 
-            {campaignToReject && (
-              <div className="mt-2 p-3 bg-muted rounded-md">
-                <div className="font-medium">Campaign: {campaignToReject.name}</div>
-                <div className="font-medium">Founder: {campaignToReject.founder.name}</div>
-                <div className="font-medium">Startup: {campaignToReject.startup.name}</div>
-              </div>
-            )}
+      <h2 className="text-xl font-semibold mb-2">Reject Campaign</h2>
+      <p className="text-muted-foreground mb-4">
+        Please provide a reason for rejecting this campaign. This will be sent to the founder via email.
+      </p>
 
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="rejection-reason">Rejection Reason</Label>
-                <Textarea
-                  id="rejection-reason"
-                  placeholder="Please explain why this campaign is being rejected..."
-                  value={rejectionReason}
-                  onChange={(e) => setRejectionReason(e.target.value)}
-                  className="min-h-[120px]"
-                />
-              </div>
-            </div>
+      {campaignToReject && (
+        <div className="mb-4 p-3 bg-muted rounded-md text-sm space-y-1">
+          <div className="font-medium">Campaign: {campaignToReject.name}</div>
+          <div className="font-medium">Founder: {campaignToReject.founder.name}</div>
+          <div className="font-medium">Startup: {campaignToReject.startup.name}</div>
+        </div>
+      )}
 
-            <AlertDialogFooter>
-              <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={confirmRejectCampaign}
-                className="bg-red-500 hover:bg-red-600 text-white"
-                disabled={!rejectionReason.trim()}
-              >
-                <Mail className="mr-2 h-4 w-4" />
-                Reject & Send Email
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </DialogPortal>
-      </Dialog>
+      <div className="grid gap-4 py-2">
+        <div className="grid gap-2">
+          <Label htmlFor="rejection-reason">Rejection Reason</Label>
+          <Textarea
+            id="rejection-reason"
+            placeholder="Please explain why this campaign is being rejected..."
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+            className="min-h-[120px]"
+          />
+        </div>
+      </div>
+
+      <div className="mt-6 flex justify-end gap-2">
+        <Button
+          variant="outline"
+          onClick={() => setShowRejectDialog(false)}
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={confirmRejectCampaign}
+          className="bg-red-500 hover:bg-red-600 text-white"
+          disabled={!rejectionReason.trim()}
+        >
+          <Mail className="mr-2 h-4 w-4" />
+          Reject & Send Email
+        </Button>
+      </div>
+    </div>
+  </div>
+      )}
+
 
       {/* Milestone Rejection Dialog with Reason */}
-      <Dialog
-        open={showMilestoneRejectDialog}
+      {showMilestoneRejectDialog && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div
+      ref={milestoneRejectRef}
+      className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg w-full max-w-md p-6 border border-border overflow-y-auto max-h-[90vh] relative"
+    >
+      <button
+        onClick={() => setShowMilestoneRejectDialog(false)}
+        className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition"
       >
-        <DialogPortal>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Reject Milestone Proof</AlertDialogTitle>
-              <AlertDialogDescription>
-                Please provide a reason for rejecting this milestone proof. This will be sent to the founder via email.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
+        ✕
+      </button>
 
-            {/* {milestoneToReject && (
-              <div className="mt-2 p-3 bg-muted rounded-md">
-                <div className="font-medium">Campaign: {milestoneToReject.name}</div>
-                <div className="font-medium">Founder: {milestoneToReject.founder.name}</div>
-                <div className="font-medium">Startup: {milestoneToReject.startup.name}</div>
-              </div>
-            )} */}
+      <h2 className="text-xl font-semibold mb-2">Reject Milestone Proof</h2>
+      <p className="text-muted-foreground mb-4">
+        Please provide a reason for rejecting this milestone proof. This will be sent to the founder via email.
+      </p>
 
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="rejection-reason">Rejection Reason</Label>
-                <Textarea
-                  id="rejection-reason"
-                  placeholder="Please explain why this campaign is being rejected..."
-                  value={rejectionReason}
-                  onChange={(e) => setRejectionReason(e.target.value)}
-                  className="min-h-[120px]"
-                />
-              </div>
-            </div>
+      {/* Optional campaign/founder info if needed */}
+      {/* {milestoneToReject && (
+        <div className="mb-4 p-3 bg-muted rounded-md text-sm space-y-1">
+          <div className="font-medium">Campaign: {milestoneToReject.name}</div>
+          <div className="font-medium">Founder: {milestoneToReject.founder.name}</div>
+          <div className="font-medium">Startup: {milestoneToReject.startup.name}</div>
+        </div>
+      )} */}
 
-            <AlertDialogFooter>
-              <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={confirmRejectCampaign}
-                className="bg-red-500 hover:bg-red-600 text-white"
-                disabled={!rejectionReason.trim()}
-              >
-                <Mail className="mr-2 h-4 w-4" />
-                Reject & Send Email
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </DialogPortal>
-      </Dialog>
+      <div className="grid gap-4 py-2">
+        <div className="grid gap-2">
+          <Label htmlFor="rejection-reason">Rejection Reason</Label>
+          <Textarea
+            id="rejection-reason"
+            placeholder="Please explain why this campaign is being rejected..."
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+            className="min-h-[120px]"
+          />
+        </div>
+      </div>
+
+      <div className="mt-6 flex justify-end gap-2">
+        <Button
+          variant="outline"
+          onClick={() => setShowMilestoneRejectDialog(false)}
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={confirmRejectCampaign}
+          className="bg-red-500 hover:bg-red-600 text-white"
+          disabled={!rejectionReason.trim()}
+        >
+          <Mail className="mr-2 h-4 w-4" />
+          Reject & Send Email
+        </Button>
+      </div>
+    </div>
+  </div>
+      )}
+
     </>
   )
 }

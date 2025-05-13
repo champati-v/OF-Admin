@@ -83,7 +83,7 @@ type Task = {
   id: string
   title: string
   description: string
-  status: "completed" | "in-progress" | "upcoming" | "rejected"
+  status: "completed" | "in-progress" | "upcoming" | "rejected" | "incomplete"
   proof?: {
     url: string
     description: string
@@ -909,8 +909,10 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
 
   const campaignData = getCampaignData()
 
-  const [investments, setInvestments] = useState<Investment[]>(campaignData.investments)
-  const [milestones, setMilestones] = useState<Milestone[]>(campaignData.milestones)
+  // const [investments, setInvestments] = useState<Investment[]>(campaignData.investments)
+  const [investments, setInvestments] = useState<Investment[]>([])
+  // const [milestones, setMilestones] = useState<Milestone[]>(campaignData.milestones)
+  const [milestones, setMilestones] = useState<Milestone[]>([])
   const [campaignStatus, setCampaignStatus] = useState<CampaignStatus>(campaignData.status)
   const [currentPage, setCurrentPage] = useState<number>(1)
   const [showForm, setShowForm] = useState(false)
@@ -970,6 +972,121 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
       }
     }
   }, [milestoneIdParam, taskIdParam, milestones])
+
+  // Fetch investments data from API
+  useEffect(() => {
+    const fetchInvestments = async () => {
+      try {
+        // Extract campaign_id from URL
+        const pathParts = window.location.pathname.split("/")
+        const campaign_id = pathParts[pathParts.length - 2] // Get the campaign_id from URL
+
+        const response = await fetch(`https://ofstaging.azurewebsites.net/api/admin/get-all-investments/${campaign_id}`, {
+          headers:{
+            user_id: "62684"
+          }
+        })
+        const data = await response.json()
+
+        if (data.investments) {
+          // Transform API data to match our Investment type
+          const formattedInvestments = data.investments.flatMap((item) => {
+            return item.investments.map((inv, index) => ({
+              id: `${item.investor._id}-${index}`,
+              investorName: item.investor.name,
+              telegram: item.investor.telegram || "",
+              email: item.investor.email,
+              walletAddress: inv.walletAddress,
+              nationality: item.investor.nationality,
+              amountInvested: `$${inv.amount.toLocaleString()}`,
+              secondWallet: inv.secondaryWalletAddress || "",
+              twitterHandle: item.investor.twitter || "",
+              date: inv.date,
+            }))
+          })
+
+          setInvestments(formattedInvestments)
+        }
+      } catch (error) {
+        console.error("Error fetching investments:", error)
+      }
+    }
+
+    fetchInvestments()
+  }, [])
+
+  // Fetch milestones data from API
+  useEffect(() => {
+    const fetchMilestones = async () => {
+      try {
+        // Extract campaign_id from URL
+        console.log("Fetching milestones...")
+        const pathParts = window.location.pathname.split("/")
+        const campaign_id = pathParts[pathParts.length - 2] // Get the campaign_id from URL
+        console.log("Campaign ID is:", campaign_id)
+
+        const response = await fetch(`https://ofstaging.azurewebsites.net/api/admin/get-milestones/${campaign_id}`, {
+          headers:{
+            user_id: "62684"
+          }
+        })
+        const data = await response.json()
+
+        if (data.milestones) {
+          // Transform API data to match our Milestone type
+          const formattedMilestones = data.milestones.map((milestone) => ({
+            id: milestone.milestoneId,
+            title: milestone.name,
+            description: milestone.description,
+            targetAmount: campaignTarget / data.milestones.length, // Divide target amount equally
+            amountReleased:
+              milestone.adminApprovalStatus === "rejected" ? 0 : (milestone.fundPercentage * campaignTarget) / 100,
+            status:
+              milestone.milestoneStatus === "completed"
+                ? "completed"
+                : milestone.milestoneStatus === "incomplete"
+                  ? "in-progress"
+                  : "upcoming",
+            completionDate: milestone.milestoneStatus === "completed" ? new Date().toISOString() : undefined,
+            progress:
+              milestone.milestoneStatus === "completed"
+                ? 100
+                : (milestone.requirements.filter((req) => req.status === "completed").length /
+                    milestone.requirements.length) *
+                  100,
+            tasks: milestone.requirements.map((req) => ({
+              id: req._id,
+              title: req.name,
+              description: req.description,
+              status:
+                req.status === "completed" ? "completed" : req.status === "incomplete" ? "in-progress" : "upcoming",
+              proof:
+                milestone.verificationProof && milestone.verificationProof !== "url"
+                  ? {
+                      url: milestone.verificationProof,
+                      description: "Verification proof submitted by the team",
+                      submittedDate: new Date().toISOString(),
+                      status:
+                        milestone.adminApprovalStatus === "pending"
+                          ? "pending"
+                          : milestone.adminApprovalStatus === "rejected"
+                            ? "failed"
+                            : "authenticated",
+                      rejectionReason: milestone.rejectionReason || undefined,
+                    }
+                  : undefined,
+            })),
+          }))
+
+          setMilestones(formattedMilestones)
+        }
+      } catch (error) {
+        console.error("Error fetching milestones:", error)
+      }
+    }
+
+    fetchMilestones()
+  }, [campaignTarget])
 
   // Filter investments based on search query
   const filteredInvestments = useMemo(() => {
@@ -1686,7 +1803,7 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
                   <TableHead className="w-[80px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
+              <TableBody key={currentPage}>
                 {currentGroupedInvestors.map((group) => (
                   <>
                     <TableRow key={group.key} className="border-t border-border">
@@ -1756,7 +1873,7 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
                                   <TableHead className="w-[120px]">Actions</TableHead>
                                 </TableRow>
                               </TableHeader>
-                              <TableBody>
+                              <TableBody key={group.key}>
                                 {/* Sort investments by date (newest first) */}
                                 {[...group.investments]
                                   .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -1912,13 +2029,13 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
                         <div
                           key={task.id}
                           className={`border rounded-md p-4 ${
-                            task.proof && task.proof.status === "pending"
-                              ? "border-amber-300 bg-amber-50"
+                            task.status === "incomplete"
+                              ? "border-amber-500 bg-amber-200"
                               : task.status === "completed"
-                                ? "border-green-200 bg-green-50"
+                                ? "border-green-500 bg-green-200"
                                 : task.status === "rejected"
-                                  ? "border-red-200 bg-red-50"
-                                  : "border-gray-200"
+                                  ? "border-red-500 bg-red-200"
+                                  : "border-gray-500 bg-gray-200"
                           }`}
                         >
                           <div className="flex items-start gap-3">
