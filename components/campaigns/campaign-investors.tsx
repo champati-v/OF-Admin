@@ -1285,101 +1285,174 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
     setExpandedMilestones(newExpanded)
   }
 
-  const handleFormSubmit = (data: any) => {
-    // Prevent form submission if target is reached or campaign is not active
-    if (isTargetReached || campaignStatus !== "active") {
-      return
-    }
-
-    // In a real implementation, this would call an API to save the investment data
-    console.log("Form submitted:", data)
-
-    if (formMode === "new") {
-      // Add new investment
-      const newInvestment: Investment = {
-        id: `${investments.length + 1}`,
-        investorName: data.name,
-        telegram: data.telegram,
-        email: data.email,
-        walletAddress: data.walletAddress,
-        nationality: data.nationality,
-        amountInvested: data.amountInvested,
-        secondWallet: data.secondWallet,
-        twitterHandle: data.twitterHandle,
-        date: data.date, // Use the date from the form instead of current date
-      }
-
-      const updatedInvestments = [...investments, newInvestment]
-      setInvestments(updatedInvestments)
-
-      // Check if target is reached with this new investment
-      const newTotal = updatedInvestments.reduce((sum, inv) => {
-        const amount = Number.parseFloat(inv.amountInvested.replace(/[^0-9.]/g, ""))
-        return sum + (isNaN(amount) ? 0 : amount)
-      }, 0)
-
-      if (newTotal >= campaignTarget) {
-        // If all milestones are also completed, mark campaign as completed
-        const allCompleted = milestones.every((m) => m.status === "completed")
-        if (allCompleted) {
-          setCampaignStatus("completed")
-        }
-      }
-    } else if (formMode === "edit") {
-      // Edit existing investment
-      setInvestments(
-        investments.map((inv) =>
-          inv.id === selectedInvestment?.id
-            ? {
-                ...inv,
-                investorName: data.name,
-                telegram: data.telegram,
-                email: data.email,
-                walletAddress: data.walletAddress,
-                nationality: data.nationality,
-                amountInvested: data.amountInvested,
-                secondWallet: data.secondWallet,
-                twitterHandle: data.twitterHandle,
-                date: data.date, // Update the date
-              }
-            : inv,
-        ),
-      )
-    } else if (formMode === "update") {
-      // Add another investment for the same investor
-      const newInvestment: Investment = {
-        id: `${investments.length + 1}`,
-        investorName: data.name,
-        telegram: data.telegram,
-        email: data.email,
-        walletAddress: data.walletAddress,
-        nationality: data.nationality,
-        amountInvested: data.amountInvested,
-        secondWallet: data.secondWallet,
-        twitterHandle: data.twitterHandle,
-        date: data.date, // Use the date from the form
-      }
-
-      const updatedInvestments = [...investments, newInvestment]
-      setInvestments(updatedInvestments)
-
-      // Check if target is reached with this new investment
-      const newTotal = updatedInvestments.reduce((sum, inv) => {
-        const amount = Number.parseFloat(inv.amountInvested.replace(/[^0-9.]/g, ""))
-        return sum + (isNaN(amount) ? 0 : amount)
-      }, 0)
-
-      if (newTotal >= campaignTarget) {
-        // If all milestones are also completed, mark campaign as completed
-        const allCompleted = milestones.every((m) => m.status === "completed")
-        if (allCompleted) {
-          setCampaignStatus("completed")
-        }
-      }
-    }
-
-    setShowForm(false)
+const handleFormSubmit = async (data: any) => {
+  // Prevent form submission if target is reached or campaign is not active
+  if (isTargetReached || campaignStatus !== "active") {
+    return
   }
+
+  if (formMode === "new") {
+    try {
+      // Prepare the API request data
+      const apiRequestBody = {
+        name: data.name,
+        email: data.email,
+        telegram: data.telegram,
+        twitter: data.twitterHandle,
+        nationality: data.nationality,
+        amount: Number.parseFloat(data.amountInvested.replace(/[^0-9.]/g, "")),
+        walletAddress: data.walletAddress,
+        secondaryWalletAddress: data.secondWallet,
+        campaignId: campaignId, // You might want to make this configurable
+      }
+
+      // Call the API
+      const response = await fetch("https://ofstaging.azurewebsites.net/api/admin/add-investment-in-campaign", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          user_id: "62684",
+        },
+        body: JSON.stringify(apiRequestBody),
+      })
+
+      const responseData = await response.json()
+
+      if (!response.ok) {
+        throw new Error(responseData.message || "Failed to add investment")
+      }
+
+      console.log("API Response:", responseData)
+
+      // Add new investment with the ID from the API response
+      const newInvestment: Investment = {
+        id: responseData.investmentId, // Use the ID from the API response
+        investorName: data.name,
+        telegram: data.telegram,
+        email: data.email,
+        walletAddress: data.walletAddress,
+        nationality: data.nationality,
+        amountInvested: data.amountInvested,
+        secondWallet: data.secondWallet,
+        twitterHandle: data.twitterHandle,
+        date: data.date,
+      }
+
+      const updatedInvestments = [...investments, newInvestment]
+      setInvestments(updatedInvestments)
+
+      // Check if target is reached with this new investment
+      const newTotal = updatedInvestments.reduce((sum, inv) => {
+        const amount = Number.parseFloat(inv.amountInvested.replace(/[^0-9.]/g, ""))
+        return sum + (isNaN(amount) ? 0 : amount)
+      }, 0)
+
+      if (newTotal >= campaignTarget) {
+        // If all milestones are also completed, mark campaign as completed
+        const allCompleted = milestones.every((m) => m.status === "completed")
+        if (allCompleted) {
+          setCampaignStatus("completed")
+        }
+      }
+    } catch (error) {
+      console.error("Error adding investment:", error)
+      // You might want to show an error message to the user here
+      // For example, using a toast notification
+      return // Return early to prevent closing the form
+    }
+  } else if (formMode === "edit") {
+    // Edit existing investment - keep the existing logic
+    setInvestments(
+      investments.map((inv) =>
+        inv.id === selectedInvestment?.id
+          ? {
+              ...inv,
+              investorName: data.name,
+              telegram: data.telegram,
+              email: data.email,
+              walletAddress: data.walletAddress,
+              nationality: data.nationality,
+              amountInvested: data.amountInvested,
+              secondWallet: data.secondWallet,
+              twitterHandle: data.twitterHandle,
+              date: data.date,
+            }
+          : inv,
+      ),
+    )
+  } else if (formMode === "update") {
+    try {
+      // For updates, also call the API
+      const apiRequestBody = {
+        name: data.name,
+        email: data.email,
+        telegram: data.telegram,
+        twitter: data.twitterHandle,
+        nationality: data.nationality,
+        amount: Number.parseFloat(data.amountInvested.replace(/[^0-9.]/g, "")),
+        walletAddress: data.walletAddress,
+        secondaryWalletAddress: data.secondWallet,
+        campaignId:campaignId ,
+      }
+
+      // Call the API
+      const response = await fetch("https://ofstaging.azurewebsites.net/api/admin/add-investment-in-campaign", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          user_id: "62684",
+        },
+        body: JSON.stringify(apiRequestBody),
+      })
+
+      const responseData = await response.json()
+
+      if (!response.ok) {
+        throw new Error(responseData.message || "Failed to add investment update")
+      }
+
+      console.log("API Response for update:", responseData)
+
+      // Add another investment for the same investor with the ID from the API
+      const newInvestment: Investment = {
+        id: responseData.investmentId, // Use the ID from the API response
+        investorName: data.name,
+        telegram: data.telegram,
+        email: data.email,
+        walletAddress: data.walletAddress,
+        nationality: data.nationality,
+        amountInvested: data.amountInvested,
+        secondWallet: data.secondWallet,
+        twitterHandle: data.twitterHandle,
+        date: data.date,
+      }
+
+      const updatedInvestments = [...investments, newInvestment]
+      setInvestments(updatedInvestments)
+
+      // Check if target is reached with this new investment
+      const newTotal = updatedInvestments.reduce((sum, inv) => {
+        const amount = Number.parseFloat(inv.amountInvested.replace(/[^0-9.]/g, ""))
+        return sum + (isNaN(amount) ? 0 : amount)
+      }, 0)
+
+      if (newTotal >= campaignTarget) {
+        // If all milestones are also completed, mark campaign as completed
+        const allCompleted = milestones.every((m) => m.status === "completed")
+        if (allCompleted) {
+          setCampaignStatus("completed")
+        }
+      }
+    } catch (error) {
+      console.error("Error updating investment:", error)
+      // You might want to show an error message to the user here
+      return // Return early to prevent closing the form
+    }
+  }
+
+  setShowForm(false)
+}
+
 
   // Calculate pagination
   const indexOfLastInvestor = currentPage * itemsPerPage
