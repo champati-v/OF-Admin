@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -33,6 +33,7 @@ import {
   FileText,
   ExternalLink,
   ChevronUp,
+  CrossIcon,
 } from "lucide-react"
 import { Pagination } from "@/components/ui/pagination"
 import {
@@ -62,7 +63,8 @@ import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { toast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
+import axios from "axios"
 
 // Define the Investment type
 type Investment = {
@@ -76,6 +78,7 @@ type Investment = {
   secondWallet: string
   twitterHandle: string
   date: string
+  investment_id: string
 }
 
 // Define the Task type
@@ -83,7 +86,7 @@ type Task = {
   id: string
   title: string
   description: string
-  status: "completed" | "in-progress" | "upcoming" | "rejected" | "incomplete"
+  status: "complete" | "incomplete" | "upcoming" | "rejected"
   proof?: {
     url: string
     description: string
@@ -101,10 +104,11 @@ type Milestone = {
   description: string
   targetAmount: number
   amountReleased: number
-  status: "completed" | "in-progress" | "upcoming"
+  status: "completed" | "incomplete" | "upcoming" | "rejected"
   completionDate?: string
   tasks: Task[]
   progress: number
+  verification_proof: string
 }
 
 // Define the Campaign Status type
@@ -115,6 +119,7 @@ const mockInvestments: Investment[] = [
   {
     id: "1",
     investorName: "John Smith",
+    investment_id: 'asdkjadnc',
     telegram: "@johnsmith",
     email: "john@example.com",
     walletAddress: "0x1234567890abcdef1234567890abcdef12345678",
@@ -126,6 +131,7 @@ const mockInvestments: Investment[] = [
   },
   {
     id: "2",
+    investment_id: 'asdkjadnc',
     investorName: "Emma Johnson",
     telegram: "@emmaj",
     email: "emma@example.com",
@@ -139,6 +145,7 @@ const mockInvestments: Investment[] = [
   {
     id: "3",
     investorName: "Michael Chen",
+        investment_id: 'asdkjadnc',
     telegram: "@michaelc",
     email: "michael@example.com",
     walletAddress: "0x3456789012abcdef3456789012abcdef34567890",
@@ -151,6 +158,7 @@ const mockInvestments: Investment[] = [
   {
     id: "4",
     investorName: "John Smith",
+        investment_id: 'asdkjadnc',
     telegram: "@johnsmith",
     email: "john@example.com",
     walletAddress: "0x1234567890abcdef1234567890abcdef12345678",
@@ -163,6 +171,7 @@ const mockInvestments: Investment[] = [
   {
     id: "5",
     investorName: "Emma Johnson",
+        investment_id: 'asdkjadnc',
     telegram: "@emmaj",
     email: "emma@example.com",
     walletAddress: "0x2345678901abcdef2345678901abcdef23456789",
@@ -931,6 +940,13 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
   const [selectedProof, setSelectedProof] = useState<{ milestone: Milestone; task: Task } | null>(null)
   const [highlightedMilestoneId, setHighlightedMilestoneId] = useState<string | null>(null)
   const [expandedMilestones, setExpandedMilestones] = useState<Set<string>>(new Set())
+  const [isSubmittingInvestment, setIsSubmittingInvestment] = useState<boolean>(false)
+  const [isDeletingInvestment, setIsDeletingInvestment] = useState<boolean>(false)
+  const [milestonesLoading, setMilestonesLoading] = useState<boolean>(true)
+  const [milestoneConfirming, setMilestoneConfirming] = useState<boolean>(false)
+  const [currentProof, setCurrentProof] = useState<any>(null)
+  const [campaignNames, setCampaignNames] = useState<string>("")
+  const [fundaingTargets, setFundingTargets] = useState<Number>()
 
   // Add state for task proof rejection
   const [showRejectProofDialog, setShowRejectProofDialog] = useState<boolean>(false)
@@ -938,9 +954,110 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
 
   const itemsPerPageConst = 15
 
+const path = window.location.pathname;
+const parts = path.split("/");
+const campaign_id = parts[4];
+
   // Campaign details
   const campaignName = campaignData.name
   const campaignTarget = campaignData.targetAmount
+
+
+  const formModalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+
+      // Check if clicked inside the modal
+      const clickedInsideModal = formModalRef.current?.contains(target);
+
+      // Check if clicked inside a Radix UI dropdown (Select/Popover/Tooltip/etc.)
+      const clickedInsideRadixDropdown = target.closest("[data-radix-popper-content-wrapper]");
+
+      if (!clickedInsideModal && !clickedInsideRadixDropdown) {
+        setShowForm(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const deleteAlertRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        deleteAlertRef.current &&
+        !deleteAlertRef.current.contains(event.target as Node)
+      ) {
+        setShowDeleteAlert(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+
+  const completeMilestoneRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        completeMilestoneRef.current &&
+        !completeMilestoneRef.current.contains(event.target as Node)
+      ) {
+        setShowCompleteMilestoneAlert(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const proofDialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        proofDialogRef.current &&
+        !proofDialogRef.current.contains(event.target as Node)
+      ) {
+        setShowProofDialog(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const rejectProofRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        rejectProofRef.current &&
+        !rejectProofRef.current.contains(event.target as Node)
+      ) {
+        setShowRejectProofDialog(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Check for URL parameters to highlight a specific milestone and task
   useEffect(() => {
@@ -978,6 +1095,7 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
     const fetchInvestments = async () => {
       try {
         // Extract campaign_id from URL
+        setMilestonesLoading(true)
         const pathParts = window.location.pathname.split("/")
         const campaign_id = pathParts[pathParts.length - 2] // Get the campaign_id from URL
 
@@ -987,6 +1105,11 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
           }
         })
         const data = await response.json()
+
+        if(data.campaignName){
+          setCampaignNames(data.campaignName)
+          setFundingTargets(data.fundingTarget)
+        }
 
         if (data.investments) {
           // Transform API data to match our Investment type
@@ -998,6 +1121,7 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
               email: item.investor.email,
               walletAddress: inv.walletAddress,
               nationality: item.investor.nationality,
+              investment_id: inv.investment_id,
               amountInvested: `$${inv.amount.toLocaleString()}`,
               secondWallet: inv.secondaryWalletAddress || "",
               twitterHandle: item.investor.twitter || "",
@@ -1010,10 +1134,13 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
       } catch (error) {
         console.error("Error fetching investments:", error)
       }
+      finally {
+        setMilestonesLoading(false)
+      }
     }
 
     fetchInvestments()
-  }, [])
+  }, [isDeletingInvestment, milestoneConfirming])
 
   // Fetch milestones data from API
   useEffect(() => {
@@ -1032,12 +1159,15 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
         })
         const data = await response.json()
 
+        
+
         if (data.milestones) {
           // Transform API data to match our Milestone type
           const formattedMilestones = data.milestones.map((milestone) => ({
             id: milestone.milestoneId,
             title: milestone.name,
             description: milestone.description,
+            adminApprovalStatus: milestone.adminApprovalStatus,
             targetAmount: campaignTarget / data.milestones.length, // Divide target amount equally
             amountReleased:
               milestone.adminApprovalStatus === "rejected" ? 0 : (milestone.fundPercentage * campaignTarget) / 100,
@@ -1045,9 +1175,10 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
               milestone.milestoneStatus === "completed"
                 ? "completed"
                 : milestone.milestoneStatus === "incomplete"
-                  ? "in-progress"
+                  ? "incomplete"
                   : "upcoming",
-            completionDate: milestone.milestoneStatus === "completed" ? new Date().toISOString() : undefined,
+            completionDate: milestone.milestoneStatus === "complete" ? new Date().toISOString() : undefined,
+            verification_proof: milestone.verificationProof,
             progress:
               milestone.milestoneStatus === "completed"
                 ? 100
@@ -1059,7 +1190,7 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
               title: req.name,
               description: req.description,
               status:
-                req.status === "completed" ? "completed" : req.status === "incomplete" ? "in-progress" : "upcoming",
+                req.status === "complete" ? "complete" : req.status === "incomplete" ? "incomplete" : "upcoming",
               proof:
                 milestone.verificationProof && milestone.verificationProof !== "url"
                   ? {
@@ -1070,7 +1201,7 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
                         milestone.adminApprovalStatus === "pending"
                           ? "pending"
                           : milestone.adminApprovalStatus === "rejected"
-                            ? "failed"
+                            ? "rejected"
                             : "authenticated",
                       rejectionReason: milestone.rejectionReason || undefined,
                     }
@@ -1149,7 +1280,7 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
 
   // Count completed milestones
   const completedMilestones = useMemo(() => {
-    return milestones.filter((m) => m.status === "completed").length
+    return milestones.filter((m) => m.status === "complete").length
   }, [milestones])
 
   // Count pending proofs across all tasks in all milestones
@@ -1209,14 +1340,31 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
     setShowForm(true)
   }
 
-  const handleDeleteInvestment = (investment: Investment) => {
+  const handleDeleteInvestment = async (investment: Investment) => {
     // Prevent deletion if campaign is not active
     if (campaignStatus !== "active") {
       return
     }
 
-    setInvestmentToDelete(investment)
-    setShowDeleteAlert(true)
+    try {
+      setIsDeletingInvestment(true)
+    const response = await axios.delete(
+      `https://ofStaging.azurewebsites.net/api/admin/delete-investment/${investment?.investment_id}`,
+      {
+        headers: {
+          user_id: "62684",
+        },
+      }
+    );
+
+    // Optionally update UI or show success message
+    toast(`Investment from ${investment?.investorName} has been deleted successfully.`)
+    } 
+    catch (error) {
+      console.error("Error deleting investment:", error);
+      toast(`Error Deleting investment from ${investment?.investorName}.`)
+    }
+    setIsDeletingInvestment(false)
   }
 
   const confirmDeleteInvestment = () => {
@@ -1227,10 +1375,64 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
     }
   }
 
-  const handleCompleteMilestone = (milestone: Milestone) => {
-    setMilestoneToComplete(milestone)
-    setShowCompleteMilestoneAlert(true)
+  const handleCompleteMilestone = async (milestone: Milestone) => {
+    try{
+      setMilestoneConfirming(true)
+
+      const response = await axios.post(
+        `https://ofStaging.azurewebsites.net/api/admin/mark-milestone-done/${campaign_id}/${milestone.id}`,
+        {
+          status: "completed",
+        },
+        {
+          headers: {
+            user_id: "62684",
+          },
+        }
+      );
+
+      if(response.status === 200){
+        toast(`Milestone ${milestone.title} has been completed successfully!.`)
+      }
+
+    }
+
+    catch (error) {
+      console.error("Error completing milestone:", error);
+      toast(`Error completing milestone ${milestone.title}.`)
+    }
+    setMilestoneConfirming(false)
   }
+
+  const handleRejectMilestone = async (milestone: Milestone) => {
+    try{
+      setMilestoneConfirming(true)
+
+      const response = await axios.patch(
+        `https://ofStaging.azurewebsites.net/api/admin/approve-reject-milestones/${campaign_id}/${milestone.id}`,
+        {
+          status: "rejected",
+          reason: "Rejection Reason here..."
+        },
+        {
+          headers: {
+            user_id: "62684",
+          },
+        }
+      );
+
+      
+      if(response.status === 200){
+        toast(`Milestone ${milestone.title} has been Rejected.`)
+      }
+    }
+    catch (error) {
+      console.error("Error completing milestone:", error);
+      toast(`Error Rejecting milestone ${milestone.title}.`)
+    }
+    setMilestoneConfirming(false)
+  }
+  
 
   const confirmCompleteMilestone = () => {
     if (milestoneToComplete) {
@@ -1240,11 +1442,11 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
           m.id === milestoneToComplete.id
             ? {
                 ...m,
-                status: "completed",
+                status: "complete",
                 amountReleased: m.targetAmount,
                 completionDate: new Date().toISOString().split("T")[0],
                 progress: 100,
-                tasks: m.tasks.map((task) => ({ ...task, status: "completed" })),
+                tasks: m.tasks.map((task) => ({ ...task, status: "complete" })),
               }
             : m,
         ),
@@ -1293,6 +1495,7 @@ const handleFormSubmit = async (data: any) => {
 
   if (formMode === "new") {
     try {
+      setIsSubmittingInvestment(true)
       // Prepare the API request data
       const apiRequestBody = {
         name: data.name,
@@ -1304,6 +1507,7 @@ const handleFormSubmit = async (data: any) => {
         walletAddress: data.walletAddress,
         secondaryWalletAddress: data.secondWallet,
         campaignId: campaignId, // You might want to make this configurable
+        date: data.date,
       }
 
       // Call the API
@@ -1360,28 +1564,93 @@ const handleFormSubmit = async (data: any) => {
       // For example, using a toast notification
       return // Return early to prevent closing the form
     }
-  } else if (formMode === "edit") {
-    // Edit existing investment - keep the existing logic
-    setInvestments(
-      investments.map((inv) =>
-        inv.id === selectedInvestment?.id
-          ? {
-              ...inv,
-              investorName: data.name,
-              telegram: data.telegram,
-              email: data.email,
-              walletAddress: data.walletAddress,
-              nationality: data.nationality,
-              amountInvested: data.amountInvested,
-              secondWallet: data.secondWallet,
-              twitterHandle: data.twitterHandle,
-              date: data.date,
-            }
-          : inv,
-      ),
-    )
+
+    setIsSubmittingInvestment(false)
+
+      } else if (formMode === "edit") {
+    try {
+      setIsSubmittingInvestment(true)
+
+      const updates: Record<string, any> = {}
+
+      const fields = [
+        { apiKey: "email", formKey: "email" },
+        { apiKey: "telegram", formKey: "telegram" },
+        { apiKey: "twitter", formKey: "twitterHandle" },
+        { apiKey: "walletAddress", formKey: "walletAddress" },
+        { apiKey: "secondaryWalletAddress", formKey: "secondWallet" },
+        {
+          apiKey: "amount",
+          formKey: "amountInvested",
+          transform: (value: string) => Number.parseFloat(value.replace(/[^0-9.]/g, "")),
+        },
+        { apiKey: "date", formKey: "date" },
+      ]
+
+      for (const field of fields) {
+        const oldValue = (selectedInvestment as any)?.[field.formKey]
+        const newValue = (data as any)[field.formKey]
+        const transformedValue = field.transform ? field.transform(newValue) : newValue
+
+        if (oldValue !== newValue) {
+          updates[field.apiKey] = transformedValue
+        }
+      }
+
+      const requestBody = {
+        investment_id: selectedInvestment?.investment_id,
+        updates,
+      }
+
+      const response = await fetch("https://ofStaging.azurewebsites.net/api/admin/edit-investment", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          user_id: "62684",
+        },
+        body: JSON.stringify(requestBody),
+      })
+
+      const responseData = await response.json()
+
+      if (!response.ok) {
+        throw new Error(responseData.message || "Failed to update investment")
+      }
+
+      console.log("Edit API Response:", responseData)
+
+      // Update local state
+      setInvestments(
+        investments.map((inv) =>
+          inv.id === selectedInvestment?.id
+            ? {
+                ...inv,
+                investorName: data.name,
+                telegram: data.telegram,
+                email: data.email,
+                walletAddress: data.walletAddress,
+                nationality: data.nationality,
+                amountInvested: data.amountInvested,
+                secondWallet: data.secondWallet,
+                twitterHandle: data.twitterHandle,
+                date: data.date,
+              }
+            : inv,
+        ),
+      )
+    } catch (error) {
+      console.error("Error editing investment:", error)
+      toast(`Failed to edit investment. Please try again. ${error}`)
+      return
+    }
+
+    setIsSubmittingInvestment(false)
+
+
   } else if (formMode === "update") {
     try {
+
+      setIsSubmittingInvestment(true)
       // For updates, also call the API
       const apiRequestBody = {
         name: data.name,
@@ -1393,6 +1662,7 @@ const handleFormSubmit = async (data: any) => {
         walletAddress: data.walletAddress,
         secondaryWalletAddress: data.secondWallet,
         campaignId:campaignId ,
+        date: data.date,
       }
 
       // Call the API
@@ -1445,14 +1715,19 @@ const handleFormSubmit = async (data: any) => {
       }
     } catch (error) {
       console.error("Error updating investment:", error)
+      toast(`Failed to update investment. Please try again. ${error}`)
       // You might want to show an error message to the user here
       return // Return early to prevent closing the form
     }
+    setIsSubmittingInvestment(false)
   }
 
   setShowForm(false)
 }
 
+const viewProof = (milestone: Milestone) => {
+  setShowProofDialog(true)
+}
 
   // Calculate pagination
   const indexOfLastInvestor = currentPage * itemsPerPage
@@ -1484,7 +1759,7 @@ const handleFormSubmit = async (data: any) => {
   const getMilestoneStatusIcon = (status: Milestone["status"], hasPendingTasks: boolean) => {
     if (status === "completed") {
       return <CheckCircle2 className="h-5 w-5 text-green-500" />
-    } else if (status === "in-progress") {
+    } else if (status === "incomplete") {
       if (hasPendingTasks) {
         return <Clock className="h-5 w-5 text-amber-500 animate-pulse" />
       }
@@ -1496,20 +1771,11 @@ const handleFormSubmit = async (data: any) => {
 
   // Get task status icon
   const getTaskStatusIcon = (task: Task) => {
-    if (task.status === "completed") {
-      return <CheckCircle2 className="h-5 w-5 text-green-500" />
-    } else if (task.status === "in-progress") {
-      if (task.proof && task.proof.status === "pending") {
-        return <Clock className="h-5 w-5 text-amber-500 animate-pulse" />
-      } else if (task.proof && task.proof.status === "failed") {
-        return <XCircle className="h-5 w-5 text-red-500" />
-      }
-      return <Clock className="h-5 w-5 text-amber-500" />
-    } else if (task.status === "rejected") {
-      return <XCircle className="h-5 w-5 text-red-500" />
-    } else {
-      return <AlertCircle className="h-5 w-5 text-gray-400" />
+    if (task.status === "complete") {
+      return <CheckCircle2 className="h-5 w-5 text-green-700" />
     }
+    else return <AlertCircle className="h-5 w-5 text-amber-950" />
+    
   }
 
   // Get campaign status badge
@@ -1532,60 +1798,58 @@ const handleFormSubmit = async (data: any) => {
     }
   }
 
-  const handleViewProof = (milestone: Milestone, task: Task) => {
-    setSelectedProof({ milestone, task })
+  const handleViewProof = (milestone: Milestone) => {
+    setCurrentProof(milestone)
     setShowProofDialog(true)
 
     // Clear the highlighted milestone after viewing
     setHighlightedMilestoneId(null)
   }
 
-  const handleAuthenticateProof = (milestone: Milestone, task: Task) => {
+  const handleAuthenticateProof = (milestone: Milestone) => {
     // Update the task status and mark as completed
-    setMilestones(
-      milestones.map((m) =>
-        m.id === milestone.id
-          ? {
-              ...m,
-              tasks: m.tasks.map((t) =>
-                t.id === task.id
-                  ? {
-                      ...t,
-                      status: "completed",
-                      proof: t.proof ? { ...t.proof, status: "authenticated" } : undefined,
-                    }
-                  : t,
-              ),
-              // Check if all tasks are completed to update milestone status
-              status: m.tasks.every((t) => (t.id === task.id ? true : t.status === "completed"))
-                ? "completed"
-                : m.status,
-              // If all tasks are completed, release full amount
-              amountReleased: m.tasks.every((t) => (t.id === task.id ? true : t.status === "completed"))
-                ? m.targetAmount
-                : m.amountReleased,
-              // Update progress based on completed tasks
-              progress: Math.round(
-                (m.tasks.filter((t) => t.id === task.id || t.status === "completed").length / m.tasks.length) * 100,
-              ),
-            }
-          : m,
-      ),
-    )
+    // setMilestones(
+    //   milestones.map((m) =>
+    //     m.id === milestone.id
+    //       ? {
+    //           ...m,
+    //           tasks: m.tasks.map((t) =>
+    //             t.id === task.id
+    //               ? {
+    //                   ...t,
+    //                   status: "complete",
+    //                   proof: t.proof ? { ...t.proof, status: "authenticated" } : undefined,
+    //                 }
+    //               : t,
+    //           ),
+    //           // Check if all tasks are completed to update milestone status
+    //           status: m.tasks.every((t) => (t.id === task.id ? true : t.status === "complete"))
+    //             ? "complete"
+    //             : m.status,
+    //           // If all tasks are completed, release full amount
+    //           amountReleased: m.tasks.every((t) => (t.id === task.id ? true : t.status === "complete"))
+    //             ? m.targetAmount
+    //             : m.amountReleased,
+    //           // Update progress based on completed tasks
+    //           progress: Math.round(
+    //             (m.tasks.filter((t) => t.id === task.id || t.status === "complete").length / m.tasks.length) * 100,
+    //           ),
+    //         }
+    //       : m,
+    //   ),
+    // )
+
+
 
     // Show success toast
-    toast({
-      title: "Task Proof Authenticated",
-      description: `The proof for "${task.title}" has been authenticated.`,
-    })
+    toast(`The proof for "${milestone.title}" has been authenticated.`,)
 
     // Close the proof dialog
     setShowProofDialog(false)
   }
 
   // New function to handle proof rejection with reason
-  const handleRejectProof = (milestone: Milestone, task: Task) => {
-    setSelectedProof({ milestone, task })
+  const handleRejectProof = (milestone: Milestone) => {
     setProofRejectionReason("")
     setShowRejectProofDialog(true)
     setShowProofDialog(false)
@@ -1623,10 +1887,7 @@ const handleFormSubmit = async (data: any) => {
       console.log(`Task proof rejected: ${selectedProof.task.title}. Reason: ${proofRejectionReason}`)
 
       // Show success toast
-      toast({
-        title: "Task Proof Rejected",
-        description: "The founder has been notified about the rejection.",
-      })
+      toast("The founder has been notified about the rejection.")
 
       setShowRejectProofDialog(false)
       setSelectedProof(null)
@@ -1636,18 +1897,18 @@ const handleFormSubmit = async (data: any) => {
 
   // Calculate if a milestone has any pending task proofs
   const hasPendingTaskProofs = (milestone: Milestone) => {
-    return milestone.tasks.some((task) => task.proof && task.proof.status === "pending")
+    return milestone.tasks.some((task) => task.proof && task.proof.url !== 'url')
   }
 
   return (
     <>
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center">
-          <h2 className="text-xl font-semibold">Investors for {campaignName}</h2>
+          <h2 className="text-xl font-semibold">Investors for {milestonesLoading ? 'loading...': campaignNames } </h2>
           {getCampaignStatusBadge()}
         </div>
         <div className="flex items-center gap-2">
-          {pendingProofs > 0 && (
+          {/* {pendingProofs > 0 && (
             <Button
               variant="outline"
               className="border-amber-500 text-amber-500 hover:bg-amber-50"
@@ -1656,7 +1917,7 @@ const handleFormSubmit = async (data: any) => {
               <Clock className="mr-2 h-4 w-4" />
               {pendingProofs} Pending Proof{pendingProofs > 1 ? "s" : ""}
             </Button>
-          )}
+          )} */}
           <Button
             onClick={handleNewInvestment}
             disabled={campaignStatus === "completed" || isTargetReached}
@@ -1728,7 +1989,11 @@ const handleFormSubmit = async (data: any) => {
             <div className="mt-2">
               <Progress value={fundingProgress} className="h-2" />
               <p className="text-xs text-muted-foreground mt-1">
-                {fundingProgress}% of {formatCurrency(campaignTarget)} goal
+                {milestonesLoading? 'loading...' :
+                <span>
+                {fundingProgress}% of {formatCurrency(fundaingTargets)} goal
+                </span>
+                }
               </p>
             </div>
           </CardContent>
@@ -1814,7 +2079,7 @@ const handleFormSubmit = async (data: any) => {
 
       {/* Tabs for Investors and Milestones */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
-        <TabsList>
+        <TabsList key={activeTab}>
           <TabsTrigger value="investors">Investors</TabsTrigger>
           <TabsTrigger value="milestones" className="relative">
             Milestones
@@ -1967,7 +2232,7 @@ const handleFormSubmit = async (data: any) => {
                                             size="sm"
                                             className="h-8 px-2"
                                             onClick={() => handleEditInvestment(investment)}
-                                            disabled={campaignStatus !== "active"}
+                                            disabled={campaignStatus !== "active" || isSubmittingInvestment}
                                           >
                                             <Edit className="h-3 w-3 mr-1" />
                                             Edit
@@ -1977,10 +2242,10 @@ const handleFormSubmit = async (data: any) => {
                                             size="sm"
                                             className="h-8 px-2 text-red-500 hover:text-red-700 hover:bg-red-50"
                                             onClick={() => handleDeleteInvestment(investment)}
-                                            disabled={campaignStatus !== "active"}
+                                            disabled={campaignStatus !== "active" || isDeletingInvestment}
                                           >
                                             <Trash2 className="h-3 w-3 mr-1" />
-                                            Delete
+                                            {isDeletingInvestment? 'Deleting...' : 'Delete'}
                                           </Button>
                                         </div>
                                       </TableCell>
@@ -1997,6 +2262,7 @@ const handleFormSubmit = async (data: any) => {
                 {groupedInvestors.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-4 text-muted-foreground">
+                      {milestonesLoading? 'loading...' : ''}
                       {searchQuery ? "No matching investors found" : "No investments found for this campaign"}
                     </TableCell>
                   </TableRow>
@@ -2044,7 +2310,7 @@ const handleFormSubmit = async (data: any) => {
                           {hasPendingTaskProofs(milestone) && (
                             <Badge variant="outline" className="ml-2 bg-amber-100 text-amber-800 border-amber-200">
                               <Clock className="h-3 w-3 mr-1" />
-                              Pending Proofs
+                              Proof Submitted
                             </Badge>
                           )}
                         </CardTitle>
@@ -2104,10 +2370,8 @@ const handleFormSubmit = async (data: any) => {
                           className={`border rounded-md p-4 ${
                             task.status === "incomplete"
                               ? "border-amber-500 bg-amber-200"
-                              : task.status === "completed"
+                              : task.status === "complete"
                                 ? "border-green-500 bg-green-200"
-                                : task.status === "rejected"
-                                  ? "border-red-500 bg-red-200"
                                   : "border-gray-500 bg-gray-200"
                           }`}
                         >
@@ -2118,7 +2382,7 @@ const handleFormSubmit = async (data: any) => {
                               <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
 
                               {/* Proof Status */}
-                              {task.proof && (
+                              {/* {task.proof && (
                                 <div className="mt-3 space-y-2">
                                   {task.proof.status === "pending" && (
                                     <div className="bg-amber-100 border border-amber-200 rounded-md p-3">
@@ -2162,11 +2426,11 @@ const handleFormSubmit = async (data: any) => {
                                     </div>
                                   )}
                                 </div>
-                              )}
+                              )} */}
                             </div>
 
                             {/* Task Actions */}
-                            <div className="flex gap-2">
+                            {/* <div className="flex gap-2">
                               {task.proof && task.proof.status === "pending" ? (
                                 <>
                                   <Button
@@ -2210,7 +2474,7 @@ const handleFormSubmit = async (data: any) => {
                                   </Button>
                                 )
                               )}
-                            </div>
+                            </div> */}
                           </div>
                         </div>
                       ))}
@@ -2226,34 +2490,49 @@ const handleFormSubmit = async (data: any) => {
                         <CheckCircle2 className="h-3 w-3 mr-1" />
                         Milestone Completed
                       </Badge>
-                    ) : milestone.status === "in-progress" ? (
+                    ) : milestone.status === "incomplete" ? (
                       <div className="flex gap-2">
-                        {hasPendingTaskProofs(milestone) ? (
+                        {milestone.verification_proof != "url" && (
                           <Button
                             variant="outline"
                             size="sm"
                             className="text-amber-600"
-                            onClick={() => toggleExpandMilestone(milestone.id)}
+                            onClick={() => handleViewProof(milestone)}
+                            disabled={milestoneConfirming}
                           >
                             <Clock className="h-4 w-4 mr-1" />
-                            Review Pending Proofs
+                            Review Proof
                           </Button>
-                        ) : (
+                        )}
+                        <>
                           <Button
                             variant="outline"
                             size="sm"
                             className="text-green-600 border-green-600 hover:bg-green-50"
                             onClick={() => handleCompleteMilestone(milestone)}
+                            disabled={milestoneConfirming || milestone.verification_proof === "url"}
                           >
                             <CheckCircle2 className="h-4 w-4 mr-1" />
                             Complete Milestone
                           </Button>
-                        )}
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 border-red-600 hover:bg-green-50"
+                            onClick={() => handleRejectMilestone(milestone)}
+                            disabled={milestoneConfirming || milestone.verification_proof === "url"}
+                          >
+                            <XCircle className="h-4 w-4 mr-1" />
+                            Reject Milestone
+                          </Button>
+
+                          </>
                       </div>
                     ) : (
                       <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">
-                        <Clock className="h-3 w-3 mr-1" />
-                        Upcoming
+                        <XCircle className="h-3 w-3 mr-1" />
+                        Rejected
                       </Badge>
                     )}
                   </div>
@@ -2265,143 +2544,167 @@ const handleFormSubmit = async (data: any) => {
       </Tabs>
 
       {/* Investment Form Dialog */}
-      <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="sm:max-w-[600px] border border-border">
-          <DialogHeader>
-            <DialogTitle>
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div
+            ref={formModalRef}
+            className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg w-full max-w-[600px] p-6 border border-border overflow-y-auto max-h-[90vh] relative"
+          >
+            <button
+              onClick={() => setShowForm(false)}
+              className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition"
+            >
+              ✕
+            </button>
+
+            <h2 className="text-xl font-semibold mb-2">
               {formMode === "new"
                 ? "Add New Investment"
                 : formMode === "edit"
-                  ? "Edit Investment"
-                  : "Add Investment Update"}
-            </DialogTitle>
-            <DialogDescription>
+                ? "Edit Investment"
+                : "Add Investment Update"}
+            </h2>
+
+            <p className="text-muted-foreground mb-4">
               {formMode === "new"
                 ? "Add a new investor to this campaign"
                 : formMode === "edit"
-                  ? "Edit the investment details"
-                  : "Add another investment from the same investor"}
-            </DialogDescription>
-          </DialogHeader>
-          <InvestmentForm
-            initialData={selectedInvestment}
-            onSubmit={handleFormSubmit}
-            onCancel={() => setShowForm(false)}
-            mode={formMode}
-          />
-        </DialogContent>
-      </Dialog>
+                ? "Edit the investment details"
+                : "Add another investment from the same investor"}
+            </p>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Investment</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this investment? This action cannot be undone.
-              {investmentToDelete && (
-                <div className="mt-2 p-3 bg-muted rounded-md">
-                  <div className="font-medium">Investor: {investmentToDelete.investorName}</div>
-                  <div className="font-medium">Amount: {investmentToDelete.amountInvested}</div>
-                  <div className="font-medium">Date: {formatDate(investmentToDelete.date)}</div>
-                </div>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteInvestment} className="bg-red-500 hover:bg-red-600">
+            <InvestmentForm
+              initialData={selectedInvestment}
+              onSubmit={handleFormSubmit}
+              onCancel={() => setShowForm(false)}
+              mode={formMode}
+              isSubmitting={isSubmittingInvestment}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* delete modal  */}
+     {showDeleteAlert && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div
+          ref={deleteAlertRef}
+          className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg w-full max-w-md p-6 border border-border relative"
+        >
+          <button
+            onClick={() => setShowDeleteAlert(false)}
+            className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition"
+          >
+            ✕
+          </button>
+
+          <h2 className="text-xl font-semibold mb-2">Delete Investment</h2>
+          <p className="text-muted-foreground mb-4">
+            Are you sure you want to delete this investment? This action cannot be undone.
+          </p>
+
+          {investmentToDelete && (
+            <div className="mt-2 p-3 bg-muted rounded-md text-sm space-y-1">
+              <div className="font-medium">Investor: {investmentToDelete.investorName}</div>
+              <div className="font-medium">Amount: {investmentToDelete.amountInvested}</div>
+              <div className="font-medium">Date: {formatDate(investmentToDelete.date)}</div>
+            </div>
+          )}
+
+          <div className="mt-6 flex justify-end gap-2">
+            <button
+              onClick={() => setShowDeleteAlert(false)}
+              className="px-4 py-2 rounded-md text-sm bg-zinc-200 dark:bg-zinc-700 text-black dark:text-white hover:bg-zinc-300 dark:hover:bg-zinc-600"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmDeleteInvestment}
+              className="px-4 py-2 rounded-md text-sm bg-red-500 hover:bg-red-600 text-white"
+            >
               Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
 
       {/* Complete Milestone Confirmation Dialog */}
-      <AlertDialog open={showCompleteMilestoneAlert} onOpenChange={setShowCompleteMilestoneAlert}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Complete Milestone</AlertDialogTitle>
-            <AlertDialogDescription>
+      {showCompleteMilestoneAlert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div
+            ref={completeMilestoneRef}
+            className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg w-full max-w-md p-6 border border-border relative"
+          >
+            <button
+              onClick={() => setShowCompleteMilestoneAlert(false)}
+              className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition"
+            >
+              ✕
+            </button>
+
+            <h2 className="text-xl font-semibold mb-2">Complete Milestone</h2>
+            <p className="text-muted-foreground mb-4">
               Are you sure you want to mark this milestone as completed? This will release{" "}
               {milestoneToComplete ? formatCurrency(milestoneToComplete.targetAmount) : ""} of funds.
-              {milestoneToComplete && (
-                <div className="mt-2 p-3 bg-muted rounded-md">
-                  <div className="font-medium">Milestone: {milestoneToComplete.title}</div>
-                  <div className="font-medium">Description: {milestoneToComplete.description}</div>
-                  <div className="font-medium">
-                    Amount to Release: {formatCurrency(milestoneToComplete.targetAmount)}
-                  </div>
+            </p>
+
+            {milestoneToComplete && (
+              <div className="mt-2 p-3 bg-muted rounded-md text-sm space-y-1">
+                <div className="font-medium">Milestone: {milestoneToComplete.title}</div>
+                <div className="font-medium">Description: {milestoneToComplete.description}</div>
+                <div className="font-medium">
+                  Amount to Release: {formatCurrency(milestoneToComplete.targetAmount)}
                 </div>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmCompleteMilestone} className="bg-green-500 hover:bg-green-600">
-              Complete Milestone
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                onClick={() => setShowCompleteMilestoneAlert(false)}
+                className="px-4 py-2 rounded-md text-sm bg-zinc-200 dark:bg-zinc-700 text-black dark:text-white hover:bg-zinc-300 dark:hover:bg-zinc-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmCompleteMilestone}
+                className="px-4 py-2 rounded-md text-sm bg-green-500 hover:bg-green-600 text-white"
+              >
+                Complete Milestone
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* Task Proof Dialog */}
-      <Dialog open={showProofDialog} onOpenChange={setShowProofDialog}>
-        <DialogContent className="sm:max-w-[700px] border border-border">
-          <DialogHeader>
-            <DialogTitle>Task Proof</DialogTitle>
-            <DialogDescription>
-              Proof submitted for task: {selectedProof?.task.title} in milestone: {selectedProof?.milestone.title}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {selectedProof?.task.proof ? (
+      {showProofDialog && currentProof && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div
+            ref={proofDialogRef}
+            className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg w-full max-w-[700px] p-6 border border-border overflow-y-auto max-h-[90vh] relative"
+          >
+            <button
+              onClick={() => setShowProofDialog(false)}
+              className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition"
+            >
+              ✕
+            </button>
+
+            <h2 className="text-xl font-semibold mb-2">Task Proof</h2>
+            <p className="text-muted-foreground mb-4">
+              Proof submitted for task: <strong>{currentProof.title}</strong> in milestone:{" "}
+            </p>
+
+            {currentProof.verification_proof ? (
               <>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <div className="font-medium">Submitted:</div>
-                  <div className="col-span-3">{formatDate(selectedProof.task.proof.submittedDate)}</div>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <div className="font-medium">Description:</div>
-                  <div className="col-span-3">{selectedProof.task.proof.description}</div>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <div className="font-medium">Status:</div>
-                  <div className="col-span-3">
-                    <Badge
-                      variant={
-                        selectedProof.task.proof.status === "authenticated"
-                          ? "success"
-                          : selectedProof.task.proof.status === "failed"
-                            ? "destructive"
-                            : "secondary"
-                      }
-                    >
-                      {selectedProof.task.proof.status === "authenticated"
-                        ? "Authenticated"
-                        : selectedProof.task.proof.status === "failed"
-                          ? "Failed"
-                          : "Pending"}
-                    </Badge>
-                  </div>
-                </div>
-                {selectedProof.task.proof.previousSubmissions && selectedProof.task.proof.previousSubmissions > 0 && (
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <div className="font-medium">Previous Attempts:</div>
-                    <div className="col-span-3">{selectedProof.task.proof.previousSubmissions}</div>
-                  </div>
-                )}
-                {selectedProof.task.proof.rejectionReason && (
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <div className="font-medium">Rejection Reason:</div>
-                    <div className="col-span-3 text-red-600">{selectedProof.task.proof.rejectionReason}</div>
-                  </div>
-                )}
                 <div className="mt-4">
                   <h3 className="text-lg font-medium mb-2">Proof Document</h3>
                   <div className="border border-border rounded-md p-4">
                     <a
-                      href={selectedProof.task.proof.url}
+                      href={currentProof.verification_proof}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary hover:underline flex items-center"
@@ -2410,15 +2713,17 @@ const handleFormSubmit = async (data: any) => {
                       View Document
                       <ExternalLink className="ml-1 h-3 w-3" />
                     </a>
+
+                    <p>Current Status: <span className={`uppercase ${currentProof.adminApprovalStatus === 'pending'? 'text-amber-800' : 'text-red-500'}`}>{currentProof.adminApprovalStatus}</span> </p>
                   </div>
                 </div>
 
-                {selectedProof.task.proof.status === "pending" && (
-                  <div className="flex justify-end gap-2 mt-4">
+                {/* {currentProof.adminApprovalStatus === "pending" && (
+                  <div className="flex justify-end gap-2 mt-6">
                     <Button
                       variant="outline"
                       className="border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
-                      onClick={() => handleRejectProof(selectedProof.milestone, selectedProof.task)}
+                      onClick={() => handleRejectProof(currentProof)}
                     >
                       <XCircle className="mr-2 h-4 w-4" />
                       Reject Proof
@@ -2426,70 +2731,96 @@ const handleFormSubmit = async (data: any) => {
                     <Button
                       variant="outline"
                       className="border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
-                      onClick={() => handleAuthenticateProof(selectedProof.milestone, selectedProof.task)}
+                      onClick={() => handleAuthenticateProof(currentProof)}
                     >
                       <CheckCircle2 className="mr-2 h-4 w-4" />
                       Approve Proof
                     </Button>
                   </div>
-                )}
+                )} */}
+
+                {/* <div className="flex justify-end gap-2 mt-6"> 
+                  {currentProof.adminApprovalStatus === "rejected" && (
+                    <Button
+                        variant="outline"
+                        className="border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
+                        onClick={() => handleAuthenticateProof(currentProof)}
+                      >
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                        Approve Proof
+                    </Button>
+                  )}
+                </div> */}
               </>
             ) : (
-              <div className="text-center py-4 text-muted-foreground">No proof has been submitted for this task.</div>
+              <div className="text-center py-4 text-muted-foreground">
+                No proof has been submitted for this task.
+              </div>
             )}
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
+
 
       {/* Task Proof Rejection Dialog with Reason */}
-      <Dialog open={showRejectProofDialog} onOpenChange={setShowRejectProofDialog}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Reject Task Proof</DialogTitle>
-            <DialogDescription>
-              Please provide a reason for rejecting this task proof. This will be sent to the founder via email.
-            </DialogDescription>
-          </DialogHeader>
+      {showRejectProofDialog && selectedProof && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div
+            ref={rejectProofRef}
+            className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg w-full max-w-[500px] p-6 border border-border overflow-y-auto max-h-[90vh] relative"
+          >
+            <button
+              onClick={() => setShowRejectProofDialog(false)}
+              className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition"
+            >
+              ✕
+            </button>
 
-          {selectedProof && (
-            <div className="mt-2 p-3 bg-muted rounded-md">
+            <h2 className="text-xl font-semibold mb-2">Reject Task Proof</h2>
+            <p className="text-muted-foreground mb-4">
+              Please provide a reason for rejecting this task proof. This will be sent to the founder via email.
+            </p>
+
+            <div className="mt-2 p-3 bg-muted rounded-md text-sm space-y-1">
               <div className="font-medium">Milestone: {selectedProof.milestone.title}</div>
               <div className="font-medium">Task: {selectedProof.task.title}</div>
               <div className="font-medium">Campaign: {campaignName}</div>
               {selectedProof.task.proof && (
-                <div className="font-medium">Submitted: {formatDate(selectedProof.task.proof.submittedDate)}</div>
+                <div className="font-medium">
+                  Submitted: {formatDate(selectedProof.task.proof.submittedDate)}
+                </div>
               )}
             </div>
-          )}
 
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="proof-rejection-reason">Rejection Reason</Label>
-              <Textarea
-                id="proof-rejection-reason"
-                placeholder="Please explain why this task proof is being rejected..."
-                value={proofRejectionReason}
-                onChange={(e) => setProofRejectionReason(e.target.value)}
-                className="min-h-[120px]"
-              />
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="proof-rejection-reason">Rejection Reason</Label>
+                <Textarea
+                  id="proof-rejection-reason"
+                  placeholder="Please explain why this task proof is being rejected..."
+                  value={proofRejectionReason}
+                  onChange={(e) => setProofRejectionReason(e.target.value)}
+                  className="min-h-[120px]"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowRejectProofDialog(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmRejectProof}
+                className="bg-red-500 hover:bg-red-600 text-white"
+                disabled={!proofRejectionReason.trim()}
+              >
+                <Mail className="mr-2 h-4 w-4" />
+                Reject & Send Email
+              </Button>
             </div>
           </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRejectProofDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={confirmRejectProof}
-              className="bg-red-500 hover:bg-red-600 text-white"
-              disabled={!proofRejectionReason.trim()}
-            >
-              <Mail className="mr-2 h-4 w-4" />
-              Reject & Send Email
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </>
   )
 }

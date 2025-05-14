@@ -3,7 +3,12 @@ import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CampaignInvestors } from "@/components/campaigns/campaign-investors"
 
-export default function CampaignInvestorsPage({ params }: { params: { campaignId: string } }) {
+export default async function CampaignInvestorsPage({
+  params,
+}: {
+  params: { campaignId: string }
+}) {
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col space-y-2">
@@ -16,7 +21,9 @@ export default function CampaignInvestorsPage({ params }: { params: { campaignId
           </Button>
         </div>
         <h1 className="text-3xl font-bold tracking-tight">Campaign Investors</h1>
-        <p className="text-muted-foreground">Manage investments and milestones for this campaign</p>
+        <p className="text-muted-foreground">
+          Manage investments and milestones for this campaign
+        </p>
       </div>
 
       <CampaignInvestors campaignId={params.campaignId} />

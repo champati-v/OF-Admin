@@ -7,15 +7,17 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { FaSpinner } from "react-icons/fa6";
 
 interface InvestmentFormProps {
   initialData: any | null
   onSubmit: (data: any) => void
   onCancel: () => void
   mode: "new" | "edit" | "update"
+  isSubmitting?: boolean
 }
 
-export function InvestmentForm({ initialData, onSubmit, onCancel, mode }: InvestmentFormProps) {
+export function InvestmentForm({ initialData, onSubmit, onCancel, mode, isSubmitting }: InvestmentFormProps) {
   // Update the formData state to include date
   const [formData, setFormData] = useState({
     name: "",
@@ -92,6 +94,7 @@ export function InvestmentForm({ initialData, onSubmit, onCancel, mode }: Invest
             onChange={handleChange}
             required
             className="border-border"
+            disabled={mode === "edit" || mode === "update"}
           />
         </div>
         <div className="space-y-2">
@@ -103,6 +106,7 @@ export function InvestmentForm({ initialData, onSubmit, onCancel, mode }: Invest
             onChange={handleChange}
             placeholder="@username"
             className="border-border"
+            disabled={mode === "edit" || mode === "update"}
           />
         </div>
       </div>
@@ -118,6 +122,7 @@ export function InvestmentForm({ initialData, onSubmit, onCancel, mode }: Invest
             onChange={handleChange}
             required
             className="border-border"
+            disabled={mode === "edit" || mode === "update"}
           />
         </div>
         <div className="space-y-2">
@@ -129,6 +134,7 @@ export function InvestmentForm({ initialData, onSubmit, onCancel, mode }: Invest
             onChange={handleChange}
             placeholder="@username"
             className="border-border"
+            disabled={mode === "edit" || mode === "update"}
           />
         </div>
       </div>
@@ -150,8 +156,8 @@ export function InvestmentForm({ initialData, onSubmit, onCancel, mode }: Invest
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="nationality">Nationality</Label>
-          <Select value={formData.nationality} onValueChange={(value) => handleSelectChange("nationality", value)}>
-            <SelectTrigger className="border-border">
+          <Select value={formData.nationality} onValueChange={(value) => handleSelectChange("nationality", value)} disabled={mode === "edit" || mode === "update"}>
+            <SelectTrigger type="button" className="border-border">
               <SelectValue placeholder="Select country" />
             </SelectTrigger>
             <SelectContent>
@@ -208,6 +214,7 @@ export function InvestmentForm({ initialData, onSubmit, onCancel, mode }: Invest
         </Button>
         <Button type="submit">
           {mode === "new" ? "Add Investment" : mode === "edit" ? "Save Changes" : "Add Update"}
+          {isSubmitting && <span className="ml-2 animate-spin"><FaSpinner /></span>}
         </Button>
       </div>
     </form>
