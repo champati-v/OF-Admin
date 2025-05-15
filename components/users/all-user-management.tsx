@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   DropdownMenu,
@@ -49,6 +49,22 @@ export function AllUsersManagement() {
 
 
   const API_URL = "https://onlyfounders.azurewebsites.net/api/admin/get-all-profiles"
+
+  const profileModalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileModalRef.current && !profileModalRef.current.contains(event.target as Node)) {
+        setShowProfile(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -315,62 +331,84 @@ export function AllUsersManagement() {
       </div>
 
       {/* User Profile Dialog */}
-      {selectedUser && (
-        <Dialog open={showProfile} onOpenChange={setShowProfile}>
-          <DialogContent className="sm:max-w-[600px] border border-border">
-            <DialogHeader>
-              <DialogTitle>User Profile</DialogTitle>
-              <DialogDescription>Detailed information about {selectedUser.username || "this user"}</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              {selectedUser.profilePic && (
-                <div className="flex justify-center">
-                  <img
-                    src={selectedUser.profilePic || "/placeholder.svg"}
-                    alt="Profile"
-                    className="w-24 h-24 rounded-full object-cover"
-                  />
-                </div>
-              )}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Name:</div>
-                <div className="col-span-3">{selectedUser.username || "N/A"}</div>
+      {showProfile && selectedUser && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div
+          ref={profileModalRef}
+          className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg w-full max-w-xl p-6 border border-border overflow-y-auto max-h-[90vh] relative"
+        >
+          <button
+            onClick={() => setShowProfile(false)}
+            className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition"
+          >
+            ✕
+          </button>
+
+          <h2 className="text-xl font-semibold mb-2">User Profile</h2>
+          <p className="text-muted-foreground mb-4">
+            Detailed information about {selectedUser.username || "this user"}
+          </p>
+
+          <div className="grid gap-4">
+            {selectedUser.profilePic && (
+              <div className="flex justify-center">
+                <img
+                  src={selectedUser.profilePic || "/placeholder.svg"}
+                  alt="Profile"
+                  className="w-24 h-24 rounded-full object-cover"
+                />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Email:</div>
-                <div className="col-span-3">{selectedUser.email || "N/A"}</div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Role:</div>
-                <div className="col-span-3">
-                  <Badge variant="outline" className="capitalize">
-                    {selectedUser.role}
-                  </Badge>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Location:</div>
-                <div className="col-span-3">{selectedUser.location || "N/A"}</div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Professional Title:</div>
-                <div className="col-span-3">{selectedUser.professionalTitle || "N/A"}</div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Status:</div>
-                <div className="col-span-3">
-                  <Badge
-                    variant={selectedUser.status === "verified" || !selectedUser.status ? "outline" : "destructive"}
-                    className="capitalize"
-                  >
-                    {selectedUser.status || "verified"}
-                  </Badge>
-                </div>
+            )}
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <div className="font-medium">Name:</div>
+              <div className="col-span-3">{selectedUser.username || "N/A"}</div>
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <div className="font-medium">Email:</div>
+              <div className="col-span-3">{selectedUser.email || "N/A"}</div>
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <div className="font-medium">Role:</div>
+              <div className="col-span-3">
+                <Badge variant="outline" className="capitalize">
+                  {selectedUser.role}
+                </Badge>
               </div>
             </div>
-          </DialogContent>
-        </Dialog>
-      )}
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <div className="font-medium">Location:</div>
+              <div className="col-span-3">{selectedUser.location || "N/A"}</div>
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <div className="font-medium">Professional Title:</div>
+              <div className="col-span-3">{selectedUser.professionalTitle || "N/A"}</div>
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <div className="font-medium">Status:</div>
+              <div className="col-span-3">
+                <Badge
+                  variant={
+                    selectedUser.status === "verified" || !selectedUser.status
+                      ? "outline"
+                      : "destructive"
+                  }
+                  className="capitalize"
+                >
+                  {selectedUser.status || "verified"}
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+)}
+
     </>
   )
 }

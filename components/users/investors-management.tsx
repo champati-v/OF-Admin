@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Table,
   TableBody,
@@ -92,6 +92,25 @@ export function InvestorsManagement() {
   const [investors, setInvestors] = useState<FormattedInvestor[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusLoading, setStatusLoading] = useState(false);
+
+  const investorModalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        investorModalRef.current &&
+        !investorModalRef.current.contains(event.target as Node)
+      ) {
+        setShowProfile(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
 
   useEffect(() => {
     const fetchInvestors = async () => {
@@ -339,106 +358,138 @@ export function InvestorsManagement() {
         </div>
 
       {/* Investor Profile Dialog */}
-      {selectedInvestor && (
-        <Dialog open={showProfile} onOpenChange={setShowProfile}>
-          <DialogContent className="sm:max-w-[600px] border border-border">
-            <DialogHeader>
-              <DialogTitle>Investor Profile</DialogTitle>
-              <DialogDescription>
-                Investment history and details for {selectedInvestor.username}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              {selectedInvestor.profilePic && (
-                <div className="flex justify-center">
-                  <div className="h-24 w-24 rounded-full overflow-hidden">
-                    <img
-                      src={selectedInvestor.profilePic.file_url || "/placeholder.svg"}
-                      alt={selectedInvestor.username}
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                </div>
-              )}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Name:</div>
-                <div className="col-span-3">{selectedInvestor.username}</div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Email:</div>
-                <div className="col-span-3"><a href={`mailto:${selectedInvestor.email}`} target="_blank" className="text-blue-600"> {selectedInvestor.email}</a></div>
-              </div>
+      {showProfile && selectedInvestor && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div
+      ref={investorModalRef}
+      className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg w-full max-w-xl p-6 border border-border overflow-y-auto max-h-[90vh] relative"
+    >
+      <button
+        onClick={() => setShowProfile(false)}
+        className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition"
+      >
+        ✕
+      </button>
 
-              <div className="grid grid-cols-4 items-start gap-4">
-                  <div className="font-medium">LinkedIn:</div>
-                  <div className="col-span-3"><a href={selectedInvestor.investorData?.socialLinks?.Linkedin} className="text-blue-600" target="_blank">{selectedInvestor.investorData?.socialLinks?.Linkedin}</a></div>
-              </div>
+      <h2 className="text-xl font-semibold mb-2">Investor Profile</h2>
+      <p className="text-muted-foreground mb-4">
+        Investment history and details for {selectedInvestor.username}
+      </p>
 
-              <div className="grid grid-cols-4 items-start gap-4">
-                  <div className="font-medium">Twitter:</div>
-                  <div className="col-span-3"><a href={selectedInvestor.investorData?.socialLinks?.Twitter} className="text-blue-600" target="_blank">{selectedInvestor.investorData?.socialLinks?.Twitter}</a></div>
-              </div>
-
-              {selectedInvestor.location && (
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <div className="font-medium">Location:</div>
-                  <div className="col-span-3">{selectedInvestor.location}</div>
-                </div>
-              )}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Joined:</div>
-                <div className="col-span-3">
-                  {formatDate(selectedInvestor.createdAt)}
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="font-medium">Status:</div>
-                <div className="col-span-3">
-                  <Badge
-                    variant={
-                      selectedInvestor.status === "verified"
-                        ? "outline"
-                        : selectedInvestor.status === "blocked" ||
-                          selectedInvestor.status === "suspended"
-                        ? "destructive"
-                        : "secondary"
-                    }
-                    className="capitalize"
-                  >
-                    {selectedInvestor.status}
-                  </Badge>
-                </div>
-              </div>
-
-              {selectedInvestor.bio && (
-                <div className="grid grid-cols-4 items-start gap-4">
-                  <div className="font-medium">Bio:</div>
-                  <div className="col-span-3">{selectedInvestor.bio}</div>
-                </div>
-              )}
-
-            
-              {selectedInvestor.skills &&
-                selectedInvestor.skills.length > 0 && (
-                  <div className="grid grid-cols-4 items-start gap-4">
-                    <div className="font-medium">Skills:</div>
-                    <div className="col-span-3 flex flex-wrap gap-1">
-                      {selectedInvestor.skills.map((skill, index) => (
-                        <Badge
-                          key={index}
-                          variant="outline"
-                          className="capitalize"
-                        >
-                          {skill}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
+      <div className="grid gap-4">
+        {selectedInvestor.profilePic && (
+          <div className="flex justify-center">
+            <div className="h-24 w-24 rounded-full overflow-hidden">
+              <img
+                src={selectedInvestor.profilePic.file_url || "/placeholder.svg"}
+                alt={selectedInvestor.username}
+                className="h-full w-full object-cover"
+              />
             </div>
-          </DialogContent>
-        </Dialog>
-      )}
+          </div>
+        )}
+
+        <div className="grid grid-cols-4 items-center gap-4">
+          <div className="font-medium">Name:</div>
+          <div className="col-span-3">{selectedInvestor.username}</div>
+        </div>
+
+        <div className="grid grid-cols-4 items-center gap-4">
+          <div className="font-medium">Email:</div>
+          <div className="col-span-3">
+            <a
+              href={`mailto:${selectedInvestor.email}`}
+              target="_blank"
+              className="text-blue-600"
+            >
+              {selectedInvestor.email}
+            </a>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-4 items-start gap-4">
+          <div className="font-medium">LinkedIn:</div>
+          <div className="col-span-3">
+            <a
+              href={selectedInvestor.investorData?.socialLinks?.Linkedin}
+              target="_blank"
+              className="text-blue-600"
+            >
+              {selectedInvestor.investorData?.socialLinks?.Linkedin}
+            </a>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-4 items-start gap-4">
+          <div className="font-medium">Twitter:</div>
+          <div className="col-span-3">
+            <a
+              href={selectedInvestor.investorData?.socialLinks?.Twitter}
+              target="_blank"
+              className="text-blue-600"
+            >
+              {selectedInvestor.investorData?.socialLinks?.Twitter}
+            </a>
+          </div>
+        </div>
+
+        {selectedInvestor.location && (
+          <div className="grid grid-cols-4 items-center gap-4">
+            <div className="font-medium">Location:</div>
+            <div className="col-span-3">{selectedInvestor.location}</div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-4 items-center gap-4">
+          <div className="font-medium">Joined:</div>
+          <div className="col-span-3">
+            {formatDate(selectedInvestor.createdAt)}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-4 items-center gap-4">
+          <div className="font-medium">Status:</div>
+          <div className="col-span-3">
+            <Badge
+              variant={
+                selectedInvestor.status === "verified"
+                  ? "outline"
+                  : selectedInvestor.status === "blocked" ||
+                    selectedInvestor.status === "suspended"
+                  ? "destructive"
+                  : "secondary"
+              }
+              className="capitalize"
+            >
+              {selectedInvestor.status}
+            </Badge>
+          </div>
+        </div>
+
+        {selectedInvestor.bio && (
+          <div className="grid grid-cols-4 items-start gap-4">
+            <div className="font-medium">Bio:</div>
+            <div className="col-span-3">{selectedInvestor.bio}</div>
+          </div>
+        )}
+
+        {selectedInvestor.skills && selectedInvestor.skills.length > 0 && (
+          <div className="grid grid-cols-4 items-start gap-4">
+            <div className="font-medium">Skills:</div>
+            <div className="col-span-3 flex flex-wrap gap-1">
+              {selectedInvestor.skills.map((skill, index) => (
+                <Badge key={index} variant="outline" className="capitalize">
+                  {skill}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+)}
+
     </>
   );
 }
