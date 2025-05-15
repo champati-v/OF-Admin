@@ -946,7 +946,7 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
   const [milestoneConfirming, setMilestoneConfirming] = useState<boolean>(false)
   const [currentProof, setCurrentProof] = useState<any>(null)
   const [campaignNames, setCampaignNames] = useState<string>("")
-  const [fundaingTargets, setFundingTargets] = useState<Number>()
+  const [fundaingTargets, setFundingTargets] = useState<number>()
 
   // Add state for task proof rejection
   const [showRejectProofDialog, setShowRejectProofDialog] = useState<boolean>(false)
@@ -1159,6 +1159,10 @@ const campaign_id = parts[4];
         })
         const data = await response.json()
 
+        if(data.campaignName){
+          setCampaignNames(data.campaignName)
+          setFundingTargets(data.fundingTarget)
+        }
         
 
         if (data.milestones) {
@@ -1217,7 +1221,7 @@ const campaign_id = parts[4];
     }
 
     fetchMilestones()
-  }, [campaignTarget])
+  }, [campaignTarget, milestoneConfirming])
 
   // Filter investments based on search query
   const filteredInvestments = useMemo(() => {
@@ -1270,8 +1274,8 @@ const campaign_id = parts[4];
   }, [milestones])
 
   const fundingProgress = useMemo(() => {
-    return Math.min(Math.round((totalRaised / campaignTarget) * 100), 100)
-  }, [totalRaised, campaignTarget])
+    return Math.min(Math.round((totalRaised / fundaingTargets) * 100), 100)
+  }, [totalRaised, fundaingTargets])
 
   // Check if target is reached
   const isTargetReached = useMemo(() => {
@@ -1280,7 +1284,7 @@ const campaign_id = parts[4];
 
   // Count completed milestones
   const completedMilestones = useMemo(() => {
-    return milestones.filter((m) => m.status === "complete").length
+    return milestones.filter((m) => m.status === "completed").length
   }, [milestones])
 
   // Count pending proofs across all tasks in all milestones
@@ -1991,7 +1995,7 @@ const viewProof = (milestone: Milestone) => {
               <p className="text-xs text-muted-foreground mt-1">
                 {milestonesLoading? 'loading...' :
                 <span>
-                {fundingProgress}% of {formatCurrency(fundaingTargets)} goal
+                {fundingProgress}% of {formatCurrency(Number(fundaingTargets))} goal
                 </span>
                 }
               </p>
@@ -2068,11 +2072,6 @@ const viewProof = (milestone: Milestone) => {
             <p className="text-xs text-muted-foreground mt-1">
               {((completedMilestones / milestones.length) * 100).toFixed(0)}% completed
             </p>
-            {pendingProofs > 0 && (
-              <p className="text-xs text-amber-500 mt-1 font-medium">
-                {pendingProofs} pending proof{pendingProofs > 1 ? "s" : ""} to review
-              </p>
-            )}
           </CardContent>
         </Card>
       </div>
@@ -2083,14 +2082,6 @@ const viewProof = (milestone: Milestone) => {
           <TabsTrigger value="investors">Investors</TabsTrigger>
           <TabsTrigger value="milestones" className="relative">
             Milestones
-            {pendingProofs > 0 && (
-              <Badge
-                variant="destructive"
-                className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-              >
-                {pendingProofs}
-              </Badge>
-            )}
           </TabsTrigger>
         </TabsList>
         <TabsContent value="investors" className="space-y-4">
