@@ -34,6 +34,7 @@ import {
   ExternalLink,
   ChevronUp,
   CrossIcon,
+  Milestone,
 } from "lucide-react"
 import { Pagination } from "@/components/ui/pagination"
 import {
@@ -947,6 +948,7 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
   const [currentProof, setCurrentProof] = useState<any>(null)
   const [campaignNames, setCampaignNames] = useState<string>("")
   const [fundaingTargets, setFundingTargets] = useState<number>()
+  const [deadline, setDeadline] = useState<string>("")
 
   // Add state for task proof rejection
   const [showRejectProofDialog, setShowRejectProofDialog] = useState<boolean>(false)
@@ -1162,6 +1164,7 @@ const campaign_id = parts[4];
         if(data.campaignName){
           setCampaignNames(data.campaignName)
           setFundingTargets(data.fundingTarget)
+          setDeadline(data.deadline)
         }
         
 
@@ -1424,7 +1427,6 @@ const campaign_id = parts[4];
           },
         }
       );
-
       
       if(response.status === 200){
         toast(`Milestone ${milestone.title} has been Rejected.`)
@@ -1810,45 +1812,35 @@ const viewProof = (milestone: Milestone) => {
     setHighlightedMilestoneId(null)
   }
 
-  const handleAuthenticateProof = (milestone: Milestone) => {
-    // Update the task status and mark as completed
-    // setMilestones(
-    //   milestones.map((m) =>
-    //     m.id === milestone.id
-    //       ? {
-    //           ...m,
-    //           tasks: m.tasks.map((t) =>
-    //             t.id === task.id
-    //               ? {
-    //                   ...t,
-    //                   status: "complete",
-    //                   proof: t.proof ? { ...t.proof, status: "authenticated" } : undefined,
-    //                 }
-    //               : t,
-    //           ),
-    //           // Check if all tasks are completed to update milestone status
-    //           status: m.tasks.every((t) => (t.id === task.id ? true : t.status === "complete"))
-    //             ? "complete"
-    //             : m.status,
-    //           // If all tasks are completed, release full amount
-    //           amountReleased: m.tasks.every((t) => (t.id === task.id ? true : t.status === "complete"))
-    //             ? m.targetAmount
-    //             : m.amountReleased,
-    //           // Update progress based on completed tasks
-    //           progress: Math.round(
-    //             (m.tasks.filter((t) => t.id === task.id || t.status === "complete").length / m.tasks.length) * 100,
-    //           ),
-    //         }
-    //       : m,
-    //   ),
-    // )
 
+  //approve milestone proof API call
+  const handleAuthenticateProof = async (currentProof) => {
+    if (currentProof && proofRejectionReason.trim()) {
+      try {
+        setMilestoneConfirming(true)
+        const response = await axios.patch(`https://ofStaging.azurewebsites.net/api/admin/approve-reject-milestones/${campaign_id}/${currentProof.id}`, 
+        {
+          status: "rejected",
+          reason: proofRejectionReason,
+        }, {
+          headers: {
+            user_id: "62684",
+          },
+        })
 
+        if (response.status === 200) {
+          toast(`The proof for "${currentProof.title}" has been rejected.`,)
+        }
+        
+      } catch (error) {
+        toast(`Error rejecting proof for "${currentProof.title}": ${error}`,)
+      }
+      setMilestoneConfirming(true)
+      setShowRejectProofDialog(false)
+      setCurrentProof(null)
+      setProofRejectionReason("")
+    }
 
-    // Show success toast
-    toast(`The proof for "${milestone.title}" has been authenticated.`,)
-
-    // Close the proof dialog
     setShowProofDialog(false)
   }
 
@@ -1859,42 +1851,31 @@ const viewProof = (milestone: Milestone) => {
     setShowProofDialog(false)
   }
 
-  // Confirm proof rejection with reason
-  const confirmRejectProof = () => {
-    if (selectedProof && proofRejectionReason.trim()) {
-      // Update the proof status to failed
-      setMilestones(
-        milestones.map((m) =>
-          m.id === selectedProof.milestone.id
-            ? {
-                ...m,
-                tasks: m.tasks.map((t) =>
-                  t.id === selectedProof.task.id && t.proof
-                    ? {
-                        ...t,
-                        status: "rejected",
-                        proof: {
-                          ...t.proof,
-                          status: "failed",
-                          rejectionReason: proofRejectionReason,
-                          previousSubmissions: (t.proof.previousSubmissions || 0) + 1,
-                        },
-                      }
-                    : t,
-                ),
-              }
-            : m,
-        ),
-      )
+  // Confirm proof rejection with reason API call
+  const confirmRejectProof = async (currentProof) => {
+    if (currentProof && proofRejectionReason.trim()) {
+      try {
+        setMilestoneConfirming(true)
+        const response = await axios.patch(`https://ofStaging.azurewebsites.net/api/admin/approve-reject-milestones/${campaign_id}/${currentProof.id}`, 
+        {
+          status: "rejected",
+          reason: proofRejectionReason,
+        }, {
+          headers: {
+            user_id: "62684",
+          },
+        })
 
-      // In a real implementation, this would send an email with the rejection reason
-      console.log(`Task proof rejected: ${selectedProof.task.title}. Reason: ${proofRejectionReason}`)
-
-      // Show success toast
-      toast("The founder has been notified about the rejection.")
-
+        if (response.status === 200) {
+          toast(`The proof for "${currentProof.title}" has been rejected.`,)
+        }
+        
+      } catch (error) {
+        toast(`Error rejecting proof for "${currentProof.title}": ${error}`,)
+      }
+      setMilestoneConfirming(true)
       setShowRejectProofDialog(false)
-      setSelectedProof(null)
+      setCurrentProof(null)
       setProofRejectionReason("")
     }
   }
@@ -1946,7 +1927,7 @@ const viewProof = (milestone: Milestone) => {
           <div>
             <h3 className="font-medium text-blue-800">Fundraising Period Ended</h3>
             <p className="text-blue-700 text-sm">
-              The fundraising period for this campaign ended on {formatDate(campaignData.fundraisingEndDate)}. No new
+              The fundraising period for this campaign ended on {formatDate(deadline)}. No new
               investments can be added, but milestone verification can continue.
             </p>
           </div>
@@ -1960,7 +1941,7 @@ const viewProof = (milestone: Milestone) => {
             <h3 className="font-medium text-green-800">Target Amount Reached</h3>
             <p className="text-green-700 text-sm">
               This campaign has reached its target of {formatCurrency(campaignTarget)}. Fundraising will continue until{" "}
-              {formatDate(campaignData.fundraisingEndDate)}.
+              {formatDate(deadline)}.
             </p>
           </div>
         </div>
@@ -1970,9 +1951,10 @@ const viewProof = (milestone: Milestone) => {
         <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-6 flex items-center">
           <Clock className="h-6 w-6 text-amber-500 mr-3" />
           <div>
+            {/* date */}
             <h3 className="font-medium text-amber-800">Fundraising In Progress</h3>
             <p className="text-amber-700 text-sm">
-              Fundraising period ends on {formatDate(campaignData.fundraisingEndDate)}.
+              Fundraising period ends on {formatDate(deadline)}.
               {totalRaised > 0
                 ? ` Currently raised ${formatCurrency(totalRaised)} (${fundingProgress}% of target).`
                 : ""}
@@ -2520,7 +2502,7 @@ const viewProof = (milestone: Milestone) => {
 
                           </>
                       </div>
-                    ) : (
+                      ) : (
                       <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">
                         <XCircle className="h-3 w-3 mr-1" />
                         Rejected
@@ -2684,9 +2666,9 @@ const viewProof = (milestone: Milestone) => {
               ✕
             </button>
 
-            <h2 className="text-xl font-semibold mb-2">Task Proof</h2>
+            <h2 className="text-xl font-semibold mb-2">Milestone Proof</h2>
             <p className="text-muted-foreground mb-4">
-              Proof submitted for task: <strong>{currentProof.title}</strong> in milestone:{" "}
+              Proof submitted for <strong>{currentProof.title}</strong>
             </p>
 
             {currentProof.verification_proof ? (
@@ -2709,8 +2691,16 @@ const viewProof = (milestone: Milestone) => {
                   </div>
                 </div>
 
-                {/* {currentProof.adminApprovalStatus === "pending" && (
+                {currentProof.adminApprovalStatus === "pending" && (
                   <div className="flex justify-end gap-2 mt-6">
+                     <Button
+                      variant="outline"
+                      className="border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
+                      onClick={() => handleAuthenticateProof(currentProof)}
+                    >
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Approve Proof
+                    </Button>
                     <Button
                       variant="outline"
                       className="border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
@@ -2719,18 +2709,10 @@ const viewProof = (milestone: Milestone) => {
                       <XCircle className="mr-2 h-4 w-4" />
                       Reject Proof
                     </Button>
-                    <Button
-                      variant="outline"
-                      className="border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600"
-                      onClick={() => handleAuthenticateProof(currentProof)}
-                    >
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
-                      Approve Proof
-                    </Button>
                   </div>
-                )} */}
+                )}
 
-                {/* <div className="flex justify-end gap-2 mt-6"> 
+                <div className="flex justify-end gap-2 mt-6"> 
                   {currentProof.adminApprovalStatus === "rejected" && (
                     <Button
                         variant="outline"
@@ -2741,7 +2723,7 @@ const viewProof = (milestone: Milestone) => {
                         Approve Proof
                     </Button>
                   )}
-                </div> */}
+                </div>
               </>
             ) : (
               <div className="text-center py-4 text-muted-foreground">
@@ -2754,7 +2736,7 @@ const viewProof = (milestone: Milestone) => {
 
 
       {/* Task Proof Rejection Dialog with Reason */}
-      {showRejectProofDialog && selectedProof && (
+      {showRejectProofDialog && currentProof && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div
             ref={rejectProofRef}
@@ -2769,18 +2751,12 @@ const viewProof = (milestone: Milestone) => {
 
             <h2 className="text-xl font-semibold mb-2">Reject Task Proof</h2>
             <p className="text-muted-foreground mb-4">
-              Please provide a reason for rejecting this task proof. This will be sent to the founder via email.
+              Please provide a reason for rejecting this Milestone.
             </p>
 
             <div className="mt-2 p-3 bg-muted rounded-md text-sm space-y-1">
-              <div className="font-medium">Milestone: {selectedProof.milestone.title}</div>
-              <div className="font-medium">Task: {selectedProof.task.title}</div>
-              <div className="font-medium">Campaign: {campaignName}</div>
-              {selectedProof.task.proof && (
-                <div className="font-medium">
-                  Submitted: {formatDate(selectedProof.task.proof.submittedDate)}
-                </div>
-              )}
+              <div className="font-medium">Campaign: {campaignNames}</div>
+              <div className="font-medium">Milestone: {currentProof.title}</div>
             </div>
 
             <div className="grid gap-4 py-4">
@@ -2801,12 +2777,12 @@ const viewProof = (milestone: Milestone) => {
                 Cancel
               </Button>
               <Button
-                onClick={confirmRejectProof}
+                onClick={() => confirmRejectProof(currentProof)}
                 className="bg-red-500 hover:bg-red-600 text-white"
                 disabled={!proofRejectionReason.trim()}
               >
                 <Mail className="mr-2 h-4 w-4" />
-                Reject & Send Email
+                Reject Milestone
               </Button>
             </div>
           </div>

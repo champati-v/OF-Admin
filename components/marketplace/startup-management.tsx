@@ -781,16 +781,28 @@ useEffect(() => {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {Object.entries(docs.socialLinks || {}).map(([key, url]) =>
               url ? (
-                <a
-                  key={key}
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 hover:text-primary transition"
+                <div className="flex items-center gap-2">
+                  <a
+                    key={key}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 hover:text-primary transition"
+                  >
+                    {iconMap[key as keyof typeof iconMap]}
+                    <span className="capitalize">{key}</span>
+                  </a>
+
+                   <button
+                  className="cursor-pointer"
+                  onClick={() => toast(key +" URL copied to clipboard")}
                 >
-                  {iconMap[key as keyof typeof iconMap]}
-                  <span className="capitalize">{key}</span>
-                </a>
+                  <CopyToClipboard text={url}>
+                    <Copy className="w-5 h-5 hover:text-gray-600" />
+                  </CopyToClipboard>
+                </button>
+                  
+                </div>
               ) : null
             )}
           </div>
@@ -821,8 +833,8 @@ useEffect(() => {
               </a>
             </div>
 
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col bg-slate-300 p-3 rounded-md">
+              <div className="flex items-center justify-between">
                 <p className="text-lg font-semibold">Pitch Deck Text</p>
                 <button
                   className="cursor-pointer"
