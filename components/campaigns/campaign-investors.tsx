@@ -977,6 +977,7 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
   const [usdcLoading, setUsdcLoading] = useState<boolean>(false)
   const [submittingCompanyDetails, setSubmittingCompanyDetails] = useState<boolean>(false)
   const [detailsSubmitted, setDetailsSubmitted] = useState<boolean>(false)
+  const [releasingFunds, setReleasingFunds] = useState<boolean>(false)
 
   // Add state for task proof rejection
   const [showRejectProofDialog, setShowRejectProofDialog] = useState<boolean>(false)
@@ -1144,6 +1145,7 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
   const amt = amount;
   if (!amt) return toast("Enter an amount");
   try {
+    setReleasingFunds(true);
     const res = await fetch(`https://ofStaging/api/admin/company/approve-transaction/${id}`, {
       method: "POST",
       body: JSON.stringify({ amount: amt })
@@ -1153,6 +1155,8 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
     toast("✅ Funds released: " + data.txHash);
   } catch (e: any) {
     toast("Error: " + e.message);
+  } finally{
+    setReleasingFunds(false);
   }
 };
 
@@ -2808,9 +2812,8 @@ const viewProof = (milestone: Milestone) => {
 
                       <Button 
                         onClick={() => handleApprove(startupId, amount)} 
-                        disabled={!usdcApproved} 
                         className="bg-green-600 hover:bg-green-700 flex-1">
-                        Release Funds
+                        Release Funds {releasingFunds? <FaSpinner className='animate-spin' /> : ''}
                       </Button>
                     </div>
                   </div>
