@@ -2735,7 +2735,7 @@ const viewProof = (milestone: Milestone) => {
           <h1 className="text-3xl font-bold text-foreground">Fund Release to {startupName}</h1>
           <Button 
             onClick={() => submitCompanyDetails(startupId)} 
-            disabled={detailsSubmitted}
+            disabled={!detailsSubmitted}
             >Confim Company Details {submittingCompanyDetails? <FaSpinner className='animate-spin'/> : ''}   
           </Button>
 
