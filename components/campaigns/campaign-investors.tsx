@@ -1146,12 +1146,8 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
   if (!amt) return toast("Enter an amount");
   try {
     setReleasingFunds(true);
-    const res = await fetch(`https://ofStaging/api/admin/company/approve-transaction/${id}`, {
-      method: "POST",
-      body: JSON.stringify({ amount: amt })
-    });
-    if (!res.ok) console.log("API call failed");
-    const data = await res.json();
+    const res = await axios.post(`https://ofStaging.azurewebsites.net/api/admin/company/approve-transaction/${id}`, { amount: amt });
+    const data = await res
     toast("✅ Funds released: " + data.txHash);
   } catch (e: any) {
     toast("Error: " + e.message);
