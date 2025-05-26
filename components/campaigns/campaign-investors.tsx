@@ -1104,18 +1104,16 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
 
     const senderSignature = encodeSignatures(signedSafeTransaction.signatures);
 
-    await fetch("http://ofStaging/api/admin/company/propose-transaction", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
+    await axios.post("http://ofStaging.azurewebsites.net/api/admin/company/propose-transaction", {
         safeAddress: multisigWallet,
         safeTransactionData: safeTransaction.data,
         safeTxHash: txHash,
         senderAddress: signerAddress,
         senderSignature
-      })
+      },{
+      headers: {
+        "Content-Type": "application/json"
+      },
     });
 
     toast("✅ USDC approval transaction proposed successfully");
