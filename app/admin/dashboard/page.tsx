@@ -23,6 +23,9 @@ export default function DashboardPage() {
         <Button asChild>
           <Link href="/admin/dashboard/campaigns">Manage Campaigns</Link>
         </Button>
+         <Button asChild>
+          <Link href="/admin/dashboard/funds">Manage Funds</Link>
+        </Button>
         </div>
       </div>
     </div>

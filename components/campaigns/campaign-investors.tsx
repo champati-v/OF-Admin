@@ -1,5 +1,6 @@
 "use client"
 
+import {API_URL} from '@/lib/config'
 import { useState, useMemo, useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -35,6 +36,10 @@ import {
   ChevronUp,
   CrossIcon,
   Milestone,
+  ArrowLeft,
+  ClipboardCheck,
+  AlertTriangle,
+  Copy,
 } from "lucide-react"
 import { Pagination } from "@/components/ui/pagination"
 import {
@@ -66,6 +71,12 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import axios from "axios"
+// import { getCompanies, approveRelease } from '../services/api';
+import { ethers } from 'ethers';
+import Safe from '@safe-global/protocol-kit';
+import SafeTransactionDataPartial from '@safe-global/protocol-kit';
+import SafeApiKit from '@safe-global/api-kit';
+import { FaSpinner } from "react-icons/fa6"
 
 // Define the Investment type
 type Investment = {
@@ -870,6 +881,15 @@ interface CampaignInvestorsProps {
   campaignId: string
 }
 
+
+interface Company {
+  _id: string;
+  name: string;
+  founderWallet: string;
+  multisigWallet: string;
+  approved: boolean;
+}
+
 // Helper function to group investments by investor
 const groupInvestmentsByInvestor = (investments: Investment[]) => {
   const groupedMap = new Map<string, Investment[]>()
@@ -903,6 +923,7 @@ const groupInvestmentsByInvestor = (investments: Investment[]) => {
 
 type SortOrder = "newest" | "oldest" | "amount-high" | "amount-low"
 
+
 export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -910,18 +931,15 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
   const milestoneIdParam = searchParams.get("milestoneId")
   const taskIdParam = searchParams.get("taskId")
 
-  // Determine which campaign to show based on campaignId (in a real app, this would be fetched from API)
   const getCampaignData = () => {
     if (campaignId === "success-1") return mockSuccessfulCampaign
-    if (campaignId === "failed-1") return mockCompletedCampaign // Keep the ID the same for compatibility
+    if (campaignId === "failed-1") return mockCompletedCampaign 
     return mockActiveCampaign
   }
 
   const campaignData = getCampaignData()
 
-  // const [investments, setInvestments] = useState<Investment[]>(campaignData.investments)
   const [investments, setInvestments] = useState<Investment[]>([])
-  // const [milestones, setMilestones] = useState<Milestone[]>(campaignData.milestones)
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [campaignStatus, setCampaignStatus] = useState<CampaignStatus>(campaignData.status)
   const [currentPage, setCurrentPage] = useState<number>(1)
@@ -949,12 +967,195 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
   const [campaignNames, setCampaignNames] = useState<string>("")
   const [fundaingTargets, setFundingTargets] = useState<number>()
   const [deadline, setDeadline] = useState<string>("")
+  const [founderName, setFounderName] = useState<string>("")
+  const [founderWalletAddress, setFounderWalletAddress] = useState<string>("")
+  const [startupName, setStartupName] = useState<string>("")
+  const [startupId, setStartupId] = useState<string>("")
+  const [amount, setAmount] = useState<any>("")
+  const [isCopied, setIsCopied] = useState<boolean>(false)
+  const [usdcApproved, setUsdcApproved] = useState<boolean>(false)
+  const [usdcLoading, setUsdcLoading] = useState<boolean>(false)
+  const [submittingCompanyDetails, setSubmittingCompanyDetails] = useState<boolean>(false)
+  const [detailsSubmitted, setDetailsSubmitted] = useState<boolean>(false)
 
   // Add state for task proof rejection
   const [showRejectProofDialog, setShowRejectProofDialog] = useState<boolean>(false)
   const [proofRejectionReason, setProofRejectionReason] = useState<string>("")
+  const [amounts, setAmounts] = useState<Record<string, string>>({});
 
-  const itemsPerPageConst = 15
+  const multisigWallet="0xfc1D42140dB6F4ac3291393d0a531A30E9C26113"
+
+  const ESCROW_CONTRACT_ADDRESS = '0x0d69D31b4F0bF51337659E4926FFcc9DAc1B00aD'; // Replace
+  const USDC_ADDRESS = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238'; // Replace
+  const USDC_ABI = [
+    'function approve(address spender, uint256 amount) public returns (bool)'
+  ];
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    // Only allow numbers and decimals
+    if (value === "" || /^\d*\.?\d*$/.test(value)) {
+      setAmount(value)
+      console.log("Amount changed:", value)
+    }
+  }
+
+  const isAmountValid =
+    amount && amount.trim() !== "" && Number.parseFloat(amount) > 0 && !isNaN(Number.parseFloat(amount))
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(founderWalletAddress)
+      setIsCopied(true)
+
+      toast("Wallet address copied to clipboard!")
+
+      // Reset the copied state after 2 seconds
+      setTimeout(() => {
+        setIsCopied(false)
+      }, 2000)
+    } catch (err) {
+      toast("Failed to copy wallet address")
+    }
+  }
+
+  const submitCompanyDetails = async (startup_Id: string) => {
+    try {
+    setSubmittingCompanyDetails(true);
+    const submitRes = await axios.post(
+      `${API_URL}/api/admin/company/submit-company-details`,
+      { startup_id: startup_Id },
+      {
+        headers: {
+          user_id: "62684",
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    if(submitRes.status === 200) {
+      setDetailsSubmitted(true);
+      const data = await submitRes;
+      toast("✅ Company details submitted successfully");
+      console.log("Company details submitted:", data);
+    }
+
+    }catch (error) {
+      console.error("Error submitting company details:", error)
+      toast("❌ Failed to submit company details")
+    } finally{
+      setSubmittingCompanyDetails(false);
+    }
+  }
+
+  const handleApproveUSDC = async (multisigWallet: string, amount: string, startup_Id: string) => {
+  try {
+    // Call the API first
+    setUsdcLoading(true);
+    alert("Approving USDC..."+ startup_Id);
+    const submitRes = await axios.post(`${API_URL}/api/admin/company/submit-company-details`, { startup_id: startup_Id }, {
+      headers: {
+        user_id: "62684",
+      },
+    });
+
+    if (submitRes.status === 200) {
+      setDetailsSubmitted(true);
+      toast("✅ USDC Approved submitted successfully");
+    }
+  
+    if (!window.ethereum) {
+      throw new Error("MetaMask not found");
+    }
+
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    const signer = await provider.getSigner();
+    const signerAddress = await signer.getAddress();
+
+    const safeSdk = await Safe.init({
+      provider: window.ethereum,
+      signer: signerAddress,
+      safeAddress: multisigWallet,
+    });
+
+    const usdcAmount = ethers.parseUnits(amount.toString(), 6);
+    const usdcInterface = new ethers.Interface(USDC_ABI);
+    const data = usdcInterface.encodeFunctionData('approve', [ESCROW_CONTRACT_ADDRESS, usdcAmount]);
+
+    const safeTransactionData: SafeTransactionDataPartial[] = [{
+      to: USDC_ADDRESS,
+      data,
+      value: '0',
+      operation: 0
+    }];
+
+    const safeTransaction = await safeSdk.createTransaction({ transactions: safeTransactionData });
+    const txHash = await safeSdk.getTransactionHash(safeTransaction);
+    const signedSafeTransaction = await safeSdk.signTransaction(safeTransaction);
+
+    function encodeSignatures(signatures: Map<string, { data: string }>) {
+      let encoded = '0x';
+      for (const [, sig] of signatures) {
+        encoded += sig.data.slice(2);
+      }
+      return encoded;
+    }
+
+    const senderSignature = encodeSignatures(signedSafeTransaction.signatures);
+
+    await fetch("http://ofStaging/api/admin/company/propose-transaction", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        safeAddress: multisigWallet,
+        safeTransactionData: safeTransaction.data,
+        safeTxHash: txHash,
+        senderAddress: signerAddress,
+        senderSignature
+      })
+    });
+
+    toast("✅ USDC approval transaction proposed successfully");
+
+  } catch (error: any) {
+    console.error("Detailed error:", error);
+
+    if (error.message.includes('Safe not found')) {
+      toast("❌ Safe wallet not found. Please check the address.");
+    } else if (error.message.includes('insufficient funds')) {
+      toast("⚠️ Insufficient funds for transaction.");
+    } else if (error.message.includes('user rejected')) {
+      toast("❌ Transaction was rejected by user.");
+    } else {
+      toast("❌ Approve failed: " + error.message);
+    }
+  }finally {
+    setUsdcLoading(false);
+  }
+};
+
+
+ const handleApprove = async (id: string) => {
+  const amount = amounts[id];
+  if (!amount) return toast("Enter an amount");
+  try {
+    const res = await fetch(`https://ofStaging/api/admin/company/approve-transaction/${id}`, {
+      method: "POST",
+      body: JSON.stringify({ amount })
+    });
+    if (!res.ok) console.log("API call failed");
+    const data = await res.json();
+    toast("✅ Funds released: " + data.txHash);
+  } catch (e: any) {
+    toast("Error: " + e.message);
+  }
+};
+
+
+const itemsPerPageConst = 15
 
 const path = window.location.pathname;
 const parts = path.split("/");
@@ -1167,6 +1368,10 @@ const campaign_id = parts[4];
           setDeadline(data.deadline)
         }
         
+        setFounderName(data.founderName)
+        setFounderWalletAddress(data.founderWalletAddress)
+        setStartupName(data.startupName)
+        setStartupId(data.startup_id)
 
         if (data.milestones) {
           // Transform API data to match our Milestone type
@@ -2065,6 +2270,9 @@ const viewProof = (milestone: Milestone) => {
           <TabsTrigger value="milestones" className="relative">
             Milestones
           </TabsTrigger>
+          <TabsTrigger value="funds" className="relative">
+            Funds
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="investors" className="space-y-4">
           {/* Search and Sort Controls */}
@@ -2512,6 +2720,99 @@ const viewProof = (milestone: Milestone) => {
                 </CardFooter>
               </Card>
             ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="funds" className="space-y-4">
+          <div className="p-4">
+            <h1 className="text-xl font-bold mb-4">Companies</h1>
+              <div className="mx-auto max-w-7xl">
+
+        {/* Page Title */}
+        <div className="flex items-center gap-3 mb-8">
+          <h1 className="text-3xl font-bold text-foreground">Fund Release to {startupName}</h1>
+          <Button onClick={() => submitCompanyDetails(startupId)} >Confim Company Details {submittingCompanyDetails? <FaSpinner className='animate-spin'/> : ''} </Button>
+        </div>
+
+        {/* Payment Card - Wider container to match the red boundary */}
+        <Card className="mx-auto w-full max-w-6xl">
+          <CardContent className="p-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+              {/* Left Side: Company Information */}
+              <div className="space-y-8">
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-muted-foreground">Startup Name</div>
+                  <div className="text-lg font-semibold">{startupName}</div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-muted-foreground">Founder Name</div>
+                  <div className="text-lg">{founderName}</div>
+                </div>
+              </div>
+
+              {/* Right Side: Payment Controls */}
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-muted-foreground">Wallet Address</div>
+                  <div className="font-mono text-sm bg-muted p-3 rounded-md flex items-center justify-between">
+                    <span className="overflow-hidden text-ellipsis">{founderWalletAddress}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={copyToClipboard}
+                      className="ml-2 h-8 w-8 p-0"
+                      title="Copy wallet address"
+                    >
+                      {isCopied ? <ClipboardCheck className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-muted-foreground">Amount (USDT)</div>
+                   <Input
+                      type="number"
+                      placeholder="USDC amount"
+                      className="border p-1 mr-2"
+                      value={amount}
+                      disabled={usdcApproved}
+                      onChange={handleAmountChange}
+                    />
+                </div>
+
+                {/* Warning Box */}
+                <div className="bg-amber-50 border border-amber-200 rounded-md p-3 flex items-start gap-2">
+                  <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-amber-800">
+                    <strong>Warning:</strong> This is a non-reversible transaction. Funds cannot be recovered once
+                    released.
+                  </div>
+                </div>
+
+                {/* Action Buttons - Side by Side */}
+                {detailsSubmitted && (
+                  <div className="flex gap-4 pt-2">
+                  <Button
+                    onClick={() => handleApproveUSDC(multisigWallet, amount, startupId)}
+                    className="bg-blue-600 hover:bg-blue-700 flex-1"
+                  >
+                    Approve USDC {usdcLoading? <FaSpinner className='animate-spin' /> : ''}
+                  </Button>
+
+                  <Button 
+                    onClick={() => handleApprove(startupId)} 
+                    disabled={!usdcApproved} 
+                    className="bg-green-600 hover:bg-green-700 flex-1">
+                    Release Funds
+                  </Button>
+                </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+              </div>
           </div>
         </TabsContent>
       </Tabs>
