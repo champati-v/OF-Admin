@@ -2798,7 +2798,6 @@ const viewProof = (milestone: Milestone) => {
                     </div>
 
                     {/* Action Buttons - Side by Side */}
-                    {detailsSubmitted && (
                       <div className="flex gap-4 pt-2">
                       <Button
                         onClick={() => handleApproveUSDC(multisigWallet, amount, startupId)}
@@ -2814,7 +2813,6 @@ const viewProof = (milestone: Milestone) => {
                         Release Funds
                       </Button>
                     </div>
-                    )}
                   </div>
                 </div>
               </CardContent>
