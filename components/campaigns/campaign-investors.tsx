@@ -978,6 +978,7 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
   const [submittingCompanyDetails, setSubmittingCompanyDetails] = useState<boolean>(false)
   const [detailsSubmitted, setDetailsSubmitted] = useState<boolean>(false)
   const [releasingFunds, setReleasingFunds] = useState<boolean>(false)
+  const [companyId, setCompanyId] = useState<string>("")
 
   // Add state for task proof rejection
   const [showRejectProofDialog, setShowRejectProofDialog] = useState<boolean>(false)
@@ -1020,34 +1021,34 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
     }
   }
 
-  const submitCompanyDetails = async (startup_Id: string) => {
-    try {
-    setSubmittingCompanyDetails(true);
-    const submitRes = await axios.post(
-      `${API_URL}/api/admin/company/submit-company-details`,
-      { startup_id: startup_Id },
-      {
-        headers: {
-          user_id: "62684",
-          "Content-Type": "application/json"
-        }
-      }
-    );
+  // const submitCompanyDetails = async (startup_Id: string) => {
+  //   try {
+  //   setSubmittingCompanyDetails(true);
+  //   const submitRes = await axios.post(
+  //     `${API_URL}/api/admin/company/submit-company-details`,
+  //     { startup_id: startup_Id },
+  //     {
+  //       headers: {
+  //         user_id: "62684",
+  //         "Content-Type": "application/json"
+  //       }
+  //     }
+  //   );
 
-    if(submitRes.status === 200) {
-      setDetailsSubmitted(true);
-      const data = await submitRes;
-      toast("✅ Company details submitted successfully");
-      console.log("Company details submitted:", data);
-    }
+  //   if(submitRes.status === 200) {
+  //     setDetailsSubmitted(true);
+  //     const data = await submitRes;
+  //     toast("✅ Company details submitted successfully");
+  //     console.log("Company details submitted:", data);
+  //   }
 
-    }catch (error) {
-      console.error("Error submitting company details:", error)
-      toast("❌ Failed to submit company details")
-    } finally{
-      setSubmittingCompanyDetails(false);
-    }
-  }
+  //   }catch (error) {
+  //     console.error("Error submitting company details:", error)
+  //     toast("❌ Failed to submit company details")
+  //   } finally{
+  //     setSubmittingCompanyDetails(false);
+  //   }
+  // }
 
   const handleApproveUSDC = async (multisigWallet: string, amount: string, startup_Id: string) => {
   try {
@@ -1060,8 +1061,9 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
     });
 
     if (submitRes.status === 200) {
+      setCompanyId(submitRes.data._id);
       setDetailsSubmitted(true);
-      toast("✅ USDC Approved submitted successfully");
+      toast("✅ Company Details submitted successfully!");
     }
   
     if (!window.ethereum) {
@@ -2792,10 +2794,12 @@ const viewProof = (milestone: Milestone) => {
                     <div className="bg-amber-50 border border-amber-200 rounded-md p-3 flex items-start gap-2">
                       <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
                       <div className="text-sm text-amber-800">
-                        <strong>Warning:</strong> This is a non-reversible transaction. Funds cannot be recovered once
-                        released.
+                        <strong>Warning:</strong> This is a non-reversible transaction. Funds cannot be recovered once released.
+                        <br />
+                        <strong>Don't Refresh this page until transaction is complete</strong>
                       </div>
                     </div>
+                    
 
                     {/* Action Buttons - Side by Side */}
                       <div className="flex gap-4 pt-2">
@@ -2807,7 +2811,7 @@ const viewProof = (milestone: Milestone) => {
                       </Button>
 
                       <Button 
-                        onClick={() => handleApprove(startupId, amount)} 
+                        onClick={() => handleApprove(companyId, amount)} 
                         className="bg-green-600 hover:bg-green-700 flex-1">
                         Release Funds {releasingFunds? <FaSpinner className='animate-spin' /> : ''}
                       </Button>
