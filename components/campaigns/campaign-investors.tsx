@@ -1103,7 +1103,7 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
 
     const senderSignature = encodeSignatures(signedSafeTransaction.signatures);
 
-    await axios.post("https://ofStaging.azurewebsites.net/api/admin/company/propose-transaction", {
+    const propose =  await axios.post("https://ofStaging.azurewebsites.net/api/admin/company/propose-transaction", {
         safeAddress: multisigWallet,
         safeTransactionData: safeTransaction.data,
         safeTxHash: txHash,
@@ -1114,6 +1114,11 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
         "Content-Type": "application/json"
       },
     });
+
+    if (propose.status !== 200) {
+      setUsdcApproved(true);
+    }
+
 
     toast("✅ USDC approval transaction proposed successfully");
 
@@ -1135,13 +1140,13 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
 };
 
 
- const handleApprove = async (id: string) => {
-  const amount = amounts[id];
-  if (!amount) return toast("Enter an amount");
+ const handleApprove = async (id: string, amount: string) => {
+  const amt = amount;
+  if (!amt) return toast("Enter an amount");
   try {
     const res = await fetch(`https://ofStaging/api/admin/company/approve-transaction/${id}`, {
       method: "POST",
-      body: JSON.stringify({ amount })
+      body: JSON.stringify({ amount: amt })
     });
     if (!res.ok) console.log("API call failed");
     const data = await res.json();
@@ -2736,84 +2741,84 @@ const viewProof = (milestone: Milestone) => {
 
         </div>
 
-        {/* Payment Card - Wider container to match the red boundary */}
-        <Card className="mx-auto w-full max-w-6xl">
-          <CardContent className="p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-              {/* Left Side: Company Information */}
-              <div className="space-y-8">
-                <div className="space-y-2">
-                  <div className="text-sm font-medium text-muted-foreground">Startup Name</div>
-                  <div className="text-lg font-semibold">{startupName}</div>
-                </div>
+            {/* Payment Card - Wider container to match the red boundary */}
+            <Card className="mx-auto w-full max-w-6xl">
+              <CardContent className="p-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                  {/* Left Side: Company Information */}
+                  <div className="space-y-8">
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-muted-foreground">Startup Name</div>
+                      <div className="text-lg font-semibold">{startupName}</div>
+                    </div>
 
-                <div className="space-y-2">
-                  <div className="text-sm font-medium text-muted-foreground">Founder Name</div>
-                  <div className="text-lg">{founderName}</div>
-                </div>
-              </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-muted-foreground">Founder Name</div>
+                      <div className="text-lg">{founderName}</div>
+                    </div>
+                  </div>
 
-              {/* Right Side: Payment Controls */}
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <div className="text-sm font-medium text-muted-foreground">Wallet Address</div>
-                  <div className="font-mono text-sm bg-muted p-3 rounded-md flex items-center justify-between">
-                    <span className="overflow-hidden text-ellipsis">{founderWalletAddress}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={copyToClipboard}
-                      className="ml-2 h-8 w-8 p-0"
-                      title="Copy wallet address"
-                    >
-                      {isCopied ? <ClipboardCheck className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                    </Button>
+                  {/* Right Side: Payment Controls */}
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-muted-foreground">Wallet Address</div>
+                      <div className="font-mono text-sm bg-muted p-3 rounded-md flex items-center justify-between">
+                        <span className="overflow-hidden text-ellipsis">{founderWalletAddress}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={copyToClipboard}
+                          className="ml-2 h-8 w-8 p-0"
+                          title="Copy wallet address"
+                        >
+                          {isCopied ? <ClipboardCheck className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-muted-foreground">Amount (USDT)</div>
+                      <Input
+                          type="number"
+                          placeholder="USDC amount"
+                          className="border p-1 mr-2"
+                          value={amount}
+                          disabled={usdcApproved}
+                          onChange={handleAmountChange}
+                        />
+                    </div>
+
+                    {/* Warning Box */}
+                    <div className="bg-amber-50 border border-amber-200 rounded-md p-3 flex items-start gap-2">
+                      <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <div className="text-sm text-amber-800">
+                        <strong>Warning:</strong> This is a non-reversible transaction. Funds cannot be recovered once
+                        released.
+                      </div>
+                    </div>
+
+                    {/* Action Buttons - Side by Side */}
+                    {detailsSubmitted && (
+                      <div className="flex gap-4 pt-2">
+                      <Button
+                        onClick={() => handleApproveUSDC(multisigWallet, amount, startupId)}
+                        className="bg-blue-600 hover:bg-blue-700 flex-1"
+                      >
+                        Approve USDC {usdcLoading? <FaSpinner className='animate-spin' /> : ''}
+                      </Button>
+
+                      <Button 
+                        onClick={() => handleApprove(startupId, amount)} 
+                        disabled={!usdcApproved} 
+                        className="bg-green-600 hover:bg-green-700 flex-1">
+                        Release Funds
+                      </Button>
+                    </div>
+                    )}
                   </div>
                 </div>
-
-                <div className="space-y-2">
-                  <div className="text-sm font-medium text-muted-foreground">Amount (USDT)</div>
-                   <Input
-                      type="number"
-                      placeholder="USDC amount"
-                      className="border p-1 mr-2"
-                      value={amount}
-                      disabled={usdcApproved}
-                      onChange={handleAmountChange}
-                    />
-                </div>
-
-                {/* Warning Box */}
-                <div className="bg-amber-50 border border-amber-200 rounded-md p-3 flex items-start gap-2">
-                  <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-amber-800">
-                    <strong>Warning:</strong> This is a non-reversible transaction. Funds cannot be recovered once
-                    released.
-                  </div>
-                </div>
-
-                {/* Action Buttons - Side by Side */}
-                {detailsSubmitted && (
-                  <div className="flex gap-4 pt-2">
-                  <Button
-                    onClick={() => handleApproveUSDC(multisigWallet, amount, startupId)}
-                    className="bg-blue-600 hover:bg-blue-700 flex-1"
-                  >
-                    Approve USDC {usdcLoading? <FaSpinner className='animate-spin' /> : ''}
-                  </Button>
-
-                  <Button 
-                    onClick={() => handleApprove(startupId)} 
-                    disabled={!usdcApproved} 
-                    className="bg-green-600 hover:bg-green-700 flex-1">
-                    Release Funds
-                  </Button>
-                </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
               </div>
           </div>
         </TabsContent>
