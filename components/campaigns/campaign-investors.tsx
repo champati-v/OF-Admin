@@ -2733,11 +2733,11 @@ const viewProof = (milestone: Milestone) => {
         {/* Page Title */}
         <div className="flex items-center gap-3 mb-8">
           <h1 className="text-3xl font-bold text-foreground">Fund Release to {startupName}</h1>
-          <Button 
+          {/* <Button 
             onClick={() => submitCompanyDetails(startupId)} 
             disabled={!detailsSubmitted}
             >Confim Company Details {submittingCompanyDetails? <FaSpinner className='animate-spin'/> : ''}   
-          </Button>
+          </Button> */}
 
         </div>
 
