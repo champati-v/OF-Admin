@@ -1052,7 +1052,6 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
   try {
     // Call the API first
     setUsdcLoading(true);
-    alert("Approving USDC..."+ startup_Id);
     const submitRes = await axios.post(`${API_URL}/api/admin/company/submit-company-details`, { startup_id: startup_Id }, {
       headers: {
         user_id: "62684",
@@ -1104,7 +1103,7 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
 
     const senderSignature = encodeSignatures(signedSafeTransaction.signatures);
 
-    await axios.post("http://ofStaging.azurewebsites.net/api/admin/company/propose-transaction", {
+    await axios.post("https://ofStaging.azurewebsites.net/api/admin/company/propose-transaction", {
         safeAddress: multisigWallet,
         safeTransactionData: safeTransaction.data,
         safeTxHash: txHash,
@@ -2729,7 +2728,12 @@ const viewProof = (milestone: Milestone) => {
         {/* Page Title */}
         <div className="flex items-center gap-3 mb-8">
           <h1 className="text-3xl font-bold text-foreground">Fund Release to {startupName}</h1>
-          <Button onClick={() => submitCompanyDetails(startupId)} >Confim Company Details {submittingCompanyDetails? <FaSpinner className='animate-spin'/> : ''} </Button>
+          <Button 
+            onClick={() => submitCompanyDetails(startupId)} 
+            disabled={detailsSubmitted}
+            >Confim Company Details {submittingCompanyDetails? <FaSpinner className='animate-spin'/> : ''}   
+          </Button>
+
         </div>
 
         {/* Payment Card - Wider container to match the red boundary */}
