@@ -428,7 +428,7 @@ export function CampaignManagement() {
             "Content-Type": "application/json",
             user_id: "62684",
           },
-          body: JSON.stringify({ status: "Completed" }),
+          body: JSON.stringify({ status: "Active" }),
         },
       )
 
