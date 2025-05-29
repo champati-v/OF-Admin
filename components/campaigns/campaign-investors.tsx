@@ -985,10 +985,10 @@ export function CampaignInvestors({ campaignId }: CampaignInvestorsProps) {
   const [proofRejectionReason, setProofRejectionReason] = useState<string>("")
   const [amounts, setAmounts] = useState<Record<string, string>>({});
 
-  const multisigWallet="0xfc1D42140dB6F4ac3291393d0a531A30E9C26113"
+  const multisigWallet="0xCdDf83CA56aACc12b40A535002c9B189963a0CED"
 
-  const ESCROW_CONTRACT_ADDRESS = '0x0d69D31b4F0bF51337659E4926FFcc9DAc1B00aD'; // Replace
-  const USDC_ADDRESS = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238'; // Replace
+  const ESCROW_CONTRACT_ADDRESS = '0x9c6622fAf62279cC9BD1962f332BC99BE203F83c'; // Replace
+  const USDC_ADDRESS = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'; // Replace
   const USDC_ABI = [
     'function approve(address spender, uint256 amount) public returns (bool)'
   ];
