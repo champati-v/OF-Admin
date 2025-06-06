@@ -3,13 +3,14 @@
 import React, { useEffect, useState } from 'react';
 // import { getCompanies, approveRelease } from '../services/api';
 import { ethers } from 'ethers';
-import Safe, { SafeTransactionDataPartial } from '@safe-global/protocol-kit';
+import Safe from '@safe-global/protocol-kit';
+import SafeTransactionDataPartial from '@safe-global/protocol-kit';
 import SafeApiKit from '@safe-global/api-kit';
 
-const multisigWallet = '0xfc1D42140dB6F4ac3291393d0a531A30E9C26113';
+const multisigWallet = '0xCdDf83CA56aACc12b40A535002c9B189963a0CED';
 
-const ESCROW_CONTRACT_ADDRESS = '0x0d69D31b4F0bF51337659E4926FFcc9DAc1B00aD';
-const USDC_ADDRESS = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238';
+const ESCROW_CONTRACT_ADDRESS = '0x9c6622fAf62279cC9BD1962f332BC99BE203F83c';//mainnet address
+const USDC_ADDRESS = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
 
 const USDC_ABI = [
   'function approve(address spender, uint256 amount) public returns (bool)'
@@ -73,7 +74,7 @@ const AdminDashboard: React.FC = () => {
 
       const senderSignature = encodeSignatures(signedSafeTransaction.signatures);
 
-      await fetch("http://localhost:5000/api/admin/company/propose-transaction", {
+      await fetch("https://ofStaging.azurewebsites.net/api/admin/company/propose-transaction", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
